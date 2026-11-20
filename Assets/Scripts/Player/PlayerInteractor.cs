@@ -14,10 +14,10 @@ public class PlayerInteractor : MonoBehaviour
     IInteractable _focus;
     IInteractable _active;
     StationBase _activeStation;
-    float _t;
 
     public IInteractable Focus { get { return _focus; } }
-    public float ActiveProgress { get { return _activeStation != null ? Mathf.Clamp01(_t) : 0f; } }
+    public float ActiveProgress { get { return _activeStation != null ? Mathf.Clamp01(_activeStation.Progress) : 0f; } }
+    public StationBase ActiveStation { get { return _activeStation; } }
     public bool IsBusy { get { return _active != null; } }
 
     void Awake()
@@ -28,6 +28,7 @@ public class PlayerInteractor : MonoBehaviour
 
     void Update()
     {
+        if (CafeGame.MenuOpen) return;
         if (_active == null) UpdateFocus();
 
         if (_active == null)
@@ -36,7 +37,6 @@ public class PlayerInteractor : MonoBehaviour
             {
                 _active = _focus;
                 _activeStation = _active as StationBase;
-                _t = 0f;
                 _active.Begin(Hands);
 
                 // Anything that is not a timed station resolves at once.
@@ -49,31 +49,10 @@ public class PlayerInteractor : MonoBehaviour
             return;
         }
 
-        // A timed station is running.
-        float dur = Mathf.Max(0.01f, _activeStation.Duration);
-        bool held = CafeInput.InteractHeld();
-
-        if (held)
+        // A station is running its minigame; it decides when it is done.
+        if (_activeStation.Tick(Hands, CafeInput.InteractHeld(), CafeInput.InteractDown(), Time.deltaTime))
         {
-            _t += Time.deltaTime / dur;
-            _activeStation.Hold(Hands, Mathf.Clamp01(_t));
-
-            // Press-and-wait stations finish themselves; hold stations wait for release.
-            if (_t >= 1f && !_activeStation.IsHold)
-            {
-                _activeStation.End(Hands, 1f);
-                _active = null; _activeStation = null; _t = 0f;
-            }
-            else if (_t >= 1f && _activeStation.IsHold)
-            {
-                _activeStation.End(Hands, 1f);
-                _active = null; _activeStation = null; _t = 0f;
-            }
-        }
-        else
-        {
-            _activeStation.End(Hands, Mathf.Clamp01(_t));
-            _active = null; _activeStation = null; _t = 0f;
+            _active = null; _activeStation = null;
         }
     }
 

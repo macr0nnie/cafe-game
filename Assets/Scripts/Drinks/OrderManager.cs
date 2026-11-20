@@ -18,24 +18,58 @@ public class OrderManager : MonoBehaviour
 
     [Header("Scoring")]
     public float AcceptThreshold = 0.6f;
+    [Tooltip("Seconds a drink can take and still earn the full speed tip.")]
+    public float ParSeconds = 60f;
 
     readonly List<OrderTicket> _open = new List<OrderTicket>();
     float _next;
     int _served;
     int _perfect;
+    bool _accepting = true;
 
     public int Served { get { return _served; } }
     public int Perfect { get { return _perfect; } }
     public int OpenCount { get { return _open.Count; } }
+    public IList<OrderTicket> Open { get { return _open; } }
 
     void Awake() { Instance = this; }
+
+    void OnEnable()
+    {
+        CafeEvents.DayStarted += OnDayStarted;
+        CafeEvents.DayEnded += OnDayEnded;
+    }
+
+    void OnDisable()
+    {
+        CafeEvents.DayStarted -= OnDayStarted;
+        CafeEvents.DayEnded -= OnDayEnded;
+    }
+
     void OnDestroy() { if (Instance == this) Instance = null; }
 
     void Start() { _next = Time.time + FirstOrderDelay; }
 
+    void OnDayStarted()
+    {
+        _accepting = true;
+        _served = 0;
+        _perfect = 0;
+        _next = Time.time + FirstOrderDelay;
+    }
+
+    /// Closing time: the remaining customers are thanked and the line is cleared.
+    void OnDayEnded()
+    {
+        _accepting = false;
+        foreach (var t in _open) if (t != null) Destroy(t.gameObject);
+        _open.Clear();
+        CafeEvents.RaiseOrdersChanged();
+    }
+
     void Update()
     {
-        if (Time.time >= _next && _open.Count < MaxOpenOrders)
+        if (_accepting && Time.time >= _next && _open.Count < MaxOpenOrders)
         {
             AddOrder(RecipeBook.Random());
             _next = Time.time + SecondsBetweenOrders;
@@ -59,15 +93,15 @@ public class OrderManager : MonoBehaviour
 
         var paper = go.transform.childCount > 0 ? go.transform.GetChild(0) : go.transform;
         ticket.Setup(r, paper, Random.Range(0f, 10f));
+        ticket.PlacedAt = Time.time;
         ticket.Nudge(16f);
 
-        // Write the drink onto the slip.
-        var tm = go.GetComponentInChildren<TextMesh>();
-        if (tm != null) tm.text = r.Name + "\n" + r.Hint;
+        ticket.WriteSlip(r);
 
         _open.Add(ticket);
         Reflow();
         CafeMessage.Show("New order: " + r.Name, 2.6f);
+        CafeEvents.RaiseOrderPlaced(ticket);
     }
 
     /// Space the tickets evenly along the line.
@@ -84,14 +118,15 @@ public class OrderManager : MonoBehaviour
     }
 
     /// Serve the cup against the best-matching open order.
-    public void TryServe(CupContents cup)
+    /// Returns true when an order took the cup.
+    public bool TryServe(CupContents cup)
     {
-        if (cup == null) return;
+        if (cup == null) return false;
 
         if (_open.Count == 0)
         {
             CafeMessage.Show("No orders up - made a " + cup.Describe(), 3f);
-            return;
+            return false;
         }
 
         int best = -1;
@@ -105,30 +140,26 @@ public class OrderManager : MonoBehaviour
         if (best < 0 || bestScore < AcceptThreshold)
         {
             CafeMessage.Show("Not what anyone ordered - that is " + cup.Describe(), 3.4f);
-            return;
+            return false;
         }
 
         var t = _open[best];
-        string name = t.Recipe.Name;
+        var recipe = t.Recipe;
+        float waited = Time.time - t.PlacedAt;
         _open.RemoveAt(best);
         if (t != null) Destroy(t.gameObject);
         Reflow();
         foreach (var o in _open) o.Nudge(10f);
 
         _served++;
+        int stars = DrinkScore.Stars(bestScore, cup.Execution);
+        int tips = DrinkScore.Payout(stars, waited, ParSeconds);
         string note = cup.TechniqueNote();
-        if (bestScore >= 0.999f)
-        {
-            _perfect++;
-            CafeMessage.Show(note == null
-                ? name + " - exactly right"
-                : name + " - exactly right. " + note, 3.4f);
-        }
-        else
-        {
-            CafeMessage.Show(name + " - close enough ("
-                + Mathf.RoundToInt(bestScore * 100f) + "%)"
-                + (note == null ? "" : ". " + note), 3.4f);
-        }
+        if (bestScore >= 0.999f) _perfect++;
+        CafeMessage.Show(recipe.Name + (bestScore >= 0.999f ? " - exactly right, " : " - close enough, ")
+            + stars + "/5 stars, +" + tips + " tips" + (note == null ? "" : ". " + note), 3.4f);
+
+        CafeEvents.RaiseOrderServed(recipe, stars, tips);
+        return true;
     }
 }

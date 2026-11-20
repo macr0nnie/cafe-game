@@ -24,7 +24,11 @@ public class ServeWindow : MonoBehaviour, IInteractable
     public void End(PlayerHands hands, float t01)
     {
         if (hands == null || !hands.HasCup) return;
-        if (OrderManager.Instance != null) OrderManager.Instance.TryServe(hands.Cup);
+        if (OrderManager.Instance != null)
+        {
+            // Cozy: a drink nobody ordered stays in your hands to fix or bin, it is never thrown away.
+            if (!OrderManager.Instance.TryServe(hands.Cup)) return;
+        }
         else CafeMessage.Show("Served: " + hands.Cup.Describe());
         hands.DestroyCup();
     }

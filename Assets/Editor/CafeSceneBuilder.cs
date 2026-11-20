@@ -75,6 +75,7 @@ public static class CafeSceneBuilder
         BuildStations(stations);
         var player = BuildPlayer(gameplay);
         BuildOrders(gameplay, player);
+        gameplay.gameObject.AddComponent<CafeDay>();
         BuildAtmosphere(fx);
         BuildLighting(lighting);
 
@@ -157,6 +158,17 @@ public static class CafeSceneBuilder
         liquid.SetFloat("_RimStrength", 0.18f);
         liquid.SetFloat("_RimPower", 5f);
         _mats["Liquid"] = liquid;
+
+        // Clear glass, so the drink's layers read from the side. Palette Ice, alpha blended.
+        var glass = Mat("M_Glass", shader, new Color(0.91f, 0.957f, 0.973f, 0.30f), Hex("#B7A6C9"), 3f, 0.03f, 0.8f);
+        glass.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+        glass.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+        glass.SetFloat("_ZWrite", 0f);
+        glass.SetColor("_RimColor", Hex("#FFFAF2"));
+        glass.SetFloat("_RimStrength", 0.55f);
+        glass.SetFloat("_RimPower", 3f);
+        glass.renderQueue = (int)RenderQueue.Transparent;
+        _mats["Glass"] = glass;
 
         AssetDatabase.SaveAssets();
     }
@@ -442,7 +454,7 @@ public static class CafeSceneBuilder
             var l = lgo.AddComponent<Light>();
             l.type = LightType.Point;
             l.color = Hex("#FFD9A0");
-            l.intensity = 6f;
+            l.intensity = 1.2f;
             l.range = 4.6f;
             l.shadows = LightShadows.None;
         }
@@ -499,9 +511,12 @@ public static class CafeSceneBuilder
         Directory.CreateDirectory(PrefabDir);
         var go = new GameObject("Cup");
 
-        Obj("Body", "MugBody", "WarmWhite", Vector3.zero, go.transform);
-        Obj("Handle", "MugHandle", "WarmWhite", new Vector3(0.056f, 0.052f, 0f), go.transform,
-            new Vector3(0f, 90f, -108f));
+        // Big enough to read at a glance in first person.
+        go.transform.localScale = Vector3.one * CupScale;
+        Obj("Body", "MugBody", "Glass", Vector3.zero, go.transform)
+            .GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
+        Obj("Handle", "MugHandle", "Glass", new Vector3(0.056f, 0.052f, 0f), go.transform,
+            new Vector3(0f, 90f, -108f)).GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
 
         var liquid = Obj("Liquid", "LiquidColumn", "Liquid", new Vector3(0f, 0.011f, 0f), go.transform,
             null, new Vector3(1f, 0.082f, 1f));
@@ -557,8 +572,9 @@ public static class CafeSceneBuilder
 
         var tmGO = new GameObject("Label");
         tmGO.transform.SetParent(paper, false);
-        tmGO.transform.localPosition = new Vector3(0f, 0.035f, -0.004f);
-        tmGO.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+        // Text on the side facing the barista (-Z): you read slips from behind the counter.
+        tmGO.transform.localPosition = new Vector3(0f, 0.085f, -0.004f);
+        tmGO.transform.localRotation = Quaternion.identity;
         var tm = tmGO.AddComponent<TextMesh>();
         tm.text = "Latte";
         tm.anchor = TextAnchor.UpperCenter;
@@ -599,7 +615,8 @@ public static class CafeSceneBuilder
     const float SpoutY   = 0.26f;
     const float SpoutZ   = 0.16f;
     const float StreamY  = 0.17f;
-    const float CupRimY  = 0.095f;
+    const float CupScale = 1.6f;
+    const float CupRimY  = 0.095f * CupScale;
 
     static IngredientStation Simple(string name, Transform parent, float x, float z, float topY,
                                     string meshKey, string mat, Ingredient produces,
@@ -613,6 +630,7 @@ public static class CafeSceneBuilder
         st.Produces = produces;
         st.Duration = duration;
         st.VerbOverride = verb;
+        st.PourEndAt = 1f;      // pour verbs stream for as long as you hold
 
         if (withSpout)
         {
@@ -663,7 +681,8 @@ public static class CafeSceneBuilder
             .GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
 
         var esp = espGO.AddComponent<EspressoStation>();
-        esp.Duration = 2.8f;
+        esp.Duration = 3.2f;
+        esp.PourEndAt = 1f;
         esp.GroundsVisual = puck.transform;
         esp.CupAnchor = espCup;
         esp.PourStream = espStreams;
@@ -702,21 +721,25 @@ public static class CafeSceneBuilder
         wand.Steam = MakeSteam("Steam", wandGO.transform, new Vector3(-0.04f, 0.18f, 0.08f), 1.2f);
 
         // ---------------- milk and brew zone
-        Simple("MilkJug",   root, -0.95f, z, y, "Hopper",        "Chrome",  Ingredient.Milk,    1.2f, "Pour");
-        Simple("HotWater",  root, -0.50f, z, y, "DispenserBody", "Chrome",  Ingredient.Water,   1.6f, "Pour");
-        Simple("TeaBrewer", root, -0.05f, z, y, "DispenserBody", "WoodMid", Ingredient.TeaBrew, 3.2f, "Brew");
+        // Pour verb: hold, watch it rise in the glass, let go at the line.
+        Simple("MilkJug",   root, -0.95f, z, y, "Hopper",        "Chrome",  Ingredient.Milk,    2.4f, "Pour");
+        Simple("HotWater",  root, -0.50f, z, y, "DispenserBody", "Chrome",  Ingredient.Water,   2.4f, "Pour");
+        Simple("TeaBrewer", root, -0.05f, z, y, "DispenserBody", "WoodMid", Ingredient.TeaBrew, 3.0f, "Pour");
 
-        // ---------------- powders
-        Simple("Matcha",    root,  0.40f, z, y, "DispenserBody", "Matcha",    Ingredient.Matcha,    1.4f, "Whisk in");
-        Simple("Chocolate", root,  0.80f, z, y, "DispenserBody", "Chocolate", Ingredient.Chocolate, 1.4f, "Stir in");
+        // Scoop verb: tap once per scoop.
+        Simple("Matcha",    root,  0.40f, z, y, "DispenserBody", "Matcha",    Ingredient.Matcha,    0f, "Scoop", false).Scoops = 2;
+        Simple("Chocolate", root,  0.80f, z, y, "DispenserBody", "Chocolate", Ingredient.Chocolate, 0f, "Scoop", false).Scoops = 2;
+        Simple("IceDispenser", root, 1.25f, z, y, "DispenserBody", "Ice",     Ingredient.Ice,        0f, "Scoop", false).Scoops = 3;
+        Simple("BobaCooker",   root, 1.70f, z, y, "DispenserBody", "Boba",    Ingredient.BobaPearls, 0f, "Scoop", false).Scoops = 3;
+        foreach (var n in new[] { "Matcha", "Chocolate", "IceDispenser", "BobaCooker" })
+            root.Find(n).GetComponent<IngredientStation>().Verb = StationVerb.Scoop;
 
-        // ---------------- cold and sweet
-        Simple("IceDispenser", root, 1.25f, z, y, "DispenserBody", "Ice",       Ingredient.Ice,          0.9f, "Scoop", false);
-        Simple("BobaCooker",   root, 1.70f, z, y, "DispenserBody", "Boba",      Ingredient.BobaPearls,   1.8f, "Scoop", false);
-        Simple("WhippedCream", root, 2.15f, z, y, "DispenserBody", "WarmWhite", Ingredient.WhippedCream, 1.2f, "Top with");
+        // Pump verb: one tap.
+        var cream = Simple("WhippedCream", root, 2.15f, z, y, "DispenserBody", "WarmWhite", Ingredient.WhippedCream, 0.5f, "Top with");
+        cream.Verb = StationVerb.Pump;
 
-        // Ice and boba are scooped, so give them an open tub rather than a spout.
-        foreach (var n in new[] { "IceDispenser", "BobaCooker", "WhippedCream" })
+        // Scooped stations get an open tub rather than a spout.
+        foreach (var n in new[] { "Matcha", "Chocolate", "IceDispenser", "BobaCooker", "WhippedCream" })
         {
             var t = root.Find(n);
             if (t != null)
@@ -740,7 +763,8 @@ public static class CafeSceneBuilder
                                 new Vector3(-2.72f, CounterTopY, CounterZ - 0.50f),
                                 new Vector3(0f, 0.11f, 0f), new Vector3(0.26f, 0.26f, 0.26f));
         for (int i = 0; i < 4; i++)
-            Obj("Stack_" + i, "MugBody", "WarmWhite", new Vector3(0f, i * 0.030f, 0f), cupGO.transform);
+            Obj("Stack_" + i, "MugBody", "Glass", new Vector3(0f, i * 0.030f * CupScale, 0f), cupGO.transform,
+                null, Vector3.one * CupScale).GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
         var disp = cupGO.AddComponent<CupDispenser>();
         disp.CupPrefab = _cupPrefab;
 
@@ -765,8 +789,9 @@ public static class CafeSceneBuilder
 
         var st = go.AddComponent<IngredientStation>();
         st.Produces = produces;
-        st.Duration = 1.0f;
+        st.Duration = 0.5f;
         st.VerbOverride = "Pump";
+        st.Verb = StationVerb.Pump;
 
         // Held up under the pump, so no cup rest here.
         var stream = Obj("PourStream", "PourStream", mat, new Vector3(0f, 0.20f, 0.05f), go.transform);
@@ -805,7 +830,8 @@ public static class CafeSceneBuilder
 
         var hold = new GameObject("HoldAnchor");
         hold.transform.SetParent(eye.transform, false);
-        hold.transform.localPosition = new Vector3(0.21f, -0.24f, 0.40f);
+        // Low right and a bit further out, so the bigger glass sits fully in frame.
+        hold.transform.localPosition = new Vector3(0.22f, -0.21f, 0.46f);
         hold.transform.localRotation = Quaternion.Euler(-8f, -14f, 6f);
 
         var fps = p.AddComponent<FirstPersonController>();
@@ -822,6 +848,10 @@ public static class CafeSceneBuilder
 
         var hud = p.AddComponent<CafeHUD>();
         hud.Interactor = inter;
+
+        // UI: open orders down the left, and every menu screen.
+        p.AddComponent<OrderBoard>().Hands = hands;
+        p.AddComponent<CafeMenus>();
 
         return p;
     }

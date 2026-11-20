@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -28,7 +29,7 @@ public static class CafeLighting
         KeyDir = new Vector3(-0.62f, -0.67f, -0.41f),      // ~42 deg elevation
         ShadowTint = "#B7A6C9",
         AmbSky = "#FFF4F0", AmbEquator = "#E4DCEE", AmbGround = "#B7A6C9",
-        PendantIntensity = 3f,
+        PendantIntensity = 0.6f,   // 3/8/10 were tuned while the toon shader ignored point lights
         FogColor = "#FDF1E7", FogDensity = 0.012f,
     };
 
@@ -39,7 +40,7 @@ public static class CafeLighting
         KeyDir = new Vector3(-0.79f, -0.31f, -0.52f),      // ~18 deg, raking
         ShadowTint = "#9A8FB3",
         AmbSky = "#E8DCD4", AmbEquator = "#C4B4C4", AmbGround = "#9A8FB3",
-        PendantIntensity = 8f,
+        PendantIntensity = 1.6f,
         FogColor = "#F0DFD4", FogDensity = 0.018f,
     };
 
@@ -50,7 +51,7 @@ public static class CafeLighting
         KeyDir = new Vector3(-0.82f, -0.17f, -0.54f),      // ~10 deg
         ShadowTint = "#5D5478",
         AmbSky = "#6A5F80", AmbEquator = "#4F4668", AmbGround = "#3F3758",
-        PendantIntensity = 10f,
+        PendantIntensity = 2.0f,
         FogColor = "#3F3758", FogDensity = 0.028f,
     };
 
@@ -113,6 +114,8 @@ public static class CafeLighting
             EditorUtility.SetDirty(mat);
         }
         AssetDatabase.SaveAssets();
+        // Light and RenderSettings edits from script don't dirty the scene, so Ctrl+S skipped them.
+        EditorSceneManager.MarkAllScenesDirty();
 
         Debug.Log("Cafe lighting preset applied: " + m.Name);
     }
