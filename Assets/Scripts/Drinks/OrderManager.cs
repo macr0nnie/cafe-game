@@ -61,9 +61,14 @@ public class OrderManager : MonoBehaviour
         ticket.Setup(r, paper, Random.Range(0f, 10f));
         ticket.Nudge(16f);
 
-        // Write the drink onto the slip.
+        // Spell out what goes in, one per line: the slip is the recipe card.
         var tm = go.GetComponentInChildren<TextMesh>();
-        if (tm != null) tm.text = r.Name + "\n" + r.Hint;
+        if (tm != null)
+        {
+            var lines = new List<string> { r.Name.ToUpper() };
+            foreach (var step in r.Steps) lines.Add(Ingredients.Label(step));
+            tm.text = string.Join("\n", lines.ToArray());
+        }
 
         _open.Add(ticket);
         Reflow();
