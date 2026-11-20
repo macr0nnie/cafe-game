@@ -29,6 +29,8 @@ Shader "Cafe/Toon"
 
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+            // PC_Renderer is Forward+, which lights through clusters and never sets _ADDITIONAL_LIGHTS.
+            #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
             #pragma multi_compile _ _ADDITIONAL_LIGHT_SHADOWS
             #pragma multi_compile _ _SHADOWS_SOFT
             #pragma multi_compile_fog
@@ -121,14 +123,18 @@ Shader "Cafe/Toon"
 
                 // Pendant lights and any other additional lights, banded the same way.
                 #ifdef _ADDITIONAL_LIGHTS
+                    // LIGHT_LOOP_BEGIN walks the clusters in Forward+ (it reads inputData)
+                    // and is a plain for loop in Forward.
+                    InputData inputData = (InputData)0;
+                    inputData.positionWS = input.positionWS;
+                    inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);
                     uint count = GetAdditionalLightsCount();
-                    for (uint li = 0u; li < count; ++li)
-                    {
-                        Light l = GetAdditionalLight(li, input.positionWS);
+                    LIGHT_LOOP_BEGIN(count)
+                        Light l = GetAdditionalLight(lightIndex, input.positionWS);
                         float nl = saturate(dot(normalWS, l.direction));
                         float la = l.distanceAttenuation * l.shadowAttenuation;
                         col += baseCol * l.color * Band(nl * la, _Bands, _BandSoftness);
-                    }
+                    LIGHT_LOOP_END
                 #endif
 
                 float rim = pow(1.0 - saturate(dot(normalWS, viewDirWS)), _RimPower);
