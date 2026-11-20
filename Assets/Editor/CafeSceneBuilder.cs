@@ -571,8 +571,9 @@ public static class CafeSceneBuilder
 
         var tmGO = new GameObject("Label");
         tmGO.transform.SetParent(paper, false);
-        tmGO.transform.localPosition = new Vector3(0f, 0.035f, -0.004f);
-        tmGO.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+        // Text on the side facing the barista (-Z): you read slips from behind the counter.
+        tmGO.transform.localPosition = new Vector3(0f, 0.085f, -0.004f);
+        tmGO.transform.localRotation = Quaternion.identity;
         var tm = tmGO.AddComponent<TextMesh>();
         tm.text = "Latte";
         tm.anchor = TextAnchor.UpperCenter;
