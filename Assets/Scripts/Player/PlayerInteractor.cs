@@ -12,7 +12,7 @@ public class PlayerInteractor : MonoBehaviour
     public LayerMask Mask = ~0;
 
     [Header("Aim assist")]
-    [Tooltip("How far off-centre (degrees) the aim can be and still pick an interactable. 0 turns assist off.")]
+    [Tooltip("How far off-centre (degrees) the aim can be and still pick an interactable. Scaled by the Aim help setting; 0 turns assist off.")]
     [Range(0f, 30f)] public float AssistDegrees = 12f;
     [Tooltip("Extra degrees the current target keeps, so focus does not flicker between neighbours.")]
     [Range(0f, 10f)] public float StickyDegrees = 4f;
@@ -35,6 +35,7 @@ public class PlayerInteractor : MonoBehaviour
 
     void Update()
     {
+        if (CafeGame.MenuOpen) return;
         if (_active == null) UpdateFocus();
 
         if (_active == null)
@@ -77,7 +78,9 @@ public class PlayerInteractor : MonoBehaviour
             _focus = hit.collider.GetComponentInParent<IInteractable>();
             if (_focus != null) return;
         }
-        if (AssistDegrees <= 0f) return;
+        // The "Aim help" slider scales the cone; 0 turns assist off.
+        float cone = AssistDegrees * CafeSettings.AimAssist;
+        if (cone <= 0f) return;
 
         // Otherwise take the visible interactable closest to the crosshair inside a small cone,
         // so small things (cups, dispensers) and things behind a counter edge are easy to hit.
@@ -90,7 +93,7 @@ public class PlayerInteractor : MonoBehaviour
             if (it == null) continue;
 
             Vector3 p = ClosestPoint(c, AimAssist.PointOnRay(o, f, c.bounds.center, Range));
-            float s = AimAssist.Score(o, f, p, Range, AssistDegrees, it == prev, StickyDegrees);
+            float s = AimAssist.Score(o, f, p, Range, cone, it == prev, StickyDegrees);
             if (s >= best || !Visible(o, p, it)) continue;
             best = s;
             _focus = it;

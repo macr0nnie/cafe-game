@@ -16,6 +16,7 @@ public class CafeHUD : MonoBehaviour
     Image _heart;
     Image _ring;
     Image _band;
+    GameObject _canvasGO;
     RectTransform _bandRT;
     Text  _prompt;
     Text  _toast;
@@ -34,18 +35,8 @@ public class CafeHUD : MonoBehaviour
 
     void BuildCanvas()
     {
-        var canvasGO = new GameObject("HUD_Canvas",
-            typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-        canvasGO.transform.SetParent(transform, false);
-
-        var canvas = canvasGO.GetComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 100;
-
-        var scaler = canvasGO.GetComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.matchWidthOrHeight = 0.5f;
+        var canvasGO = CafeUIKit.MakeCanvas(transform, "HUD_Canvas", 100).gameObject;
+        _canvasGO = canvasGO;
 
         // Target band: the arc you are aiming for, around the outside of the progress ring.
         var bandGO = new GameObject("TargetBand", typeof(Image));
@@ -93,56 +84,38 @@ public class CafeHUD : MonoBehaviour
         _heartRT.anchoredPosition = Vector2.zero;
         _heartRT.sizeDelta = new Vector2(IdleSize, IdleSize);
 
-        _prompt = MakeText(canvasGO.transform, "Prompt", 30, new Vector2(0.5f, 0.5f),
-                           new Vector2(0f, -58f), new Vector2(900f, 44f), TextAnchor.MiddleCenter);
-        _cupLine = MakeText(canvasGO.transform, "CupLine", 24, new Vector2(0f, 0f),
-                            new Vector2(330f, 54f), new Vector2(620f, 34f), TextAnchor.LowerLeft);
-        _cupLine.color = new Color(1f, 0.86f, 0.90f, 0.95f);
-        _orderLine = MakeText(canvasGO.transform, "OrderLine", 24, new Vector2(1f, 1f),
-                              new Vector2(-180f, -44f), new Vector2(320f, 34f), TextAnchor.UpperRight);
-        _orderLine.color = new Color(1f, 0.93f, 0.86f, 0.9f);
-        _toast  = MakeText(canvasGO.transform, "Toast", 26, new Vector2(0.5f, 0f),
-                           new Vector2(0f, 96f), new Vector2(1100f, 40f), TextAnchor.MiddleCenter);
-        _toast.color = new Color(1f, 0.93f, 0.88f, 1f);
+        // Text sits on little watercolour paper chips, so it reads over any background.
+        _prompt    = Chip(canvasGO.transform, "Prompt",    30, new Vector2(0.5f, 0.5f), new Vector2(0f, -78f), CafeUIKit.Paper);
+        _cupLine   = Chip(canvasGO.transform, "CupLine",   24, new Vector2(0f, 0f),     new Vector2(28f, 28f),  CafeUIKit.Blush);
+        _orderLine = Chip(canvasGO.transform, "Clock",     24, new Vector2(1f, 1f),     new Vector2(-28f, -28f), CafeUIKit.Mint);
+        _toast     = Chip(canvasGO.transform, "Toast",     26, new Vector2(0.5f, 0f),   new Vector2(0f, 96f),   CafeUIKit.Butter);
     }
 
-    static Text MakeText(Transform parent, string name, int size, Vector2 anchor,
-                         Vector2 pos, Vector2 sizeDelta, TextAnchor align)
+    static Text Chip(Transform parent, string name, int size, Vector2 anchor, Vector2 pos, Color tint)
     {
-        var go = new GameObject(name, typeof(Text), typeof(Outline));
-        go.transform.SetParent(parent, false);
-        var t = go.GetComponent<Text>();
-        t.font = BuiltinFont();
-        t.fontSize = size;
-        t.alignment = align;
-        t.color = new Color(1f, 1f, 1f, 0.95f);
-        t.raycastTarget = false;
+        var card = CafeUIKit.Card(parent, name, tint);
+        card.raycastTarget = false;
+        CafeUIKit.Place(card.rectTransform, anchor, pos, Vector2.zero);
+        var h = card.gameObject.AddComponent<HorizontalLayoutGroup>();
+        h.padding = new RectOffset(30, 30, 14, 14);
+        h.childControlWidth = true; h.childControlHeight = true;
+        h.childForceExpandWidth = false; h.childForceExpandHeight = false;
+        var fit = card.gameObject.AddComponent<ContentSizeFitter>();
+        fit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+        fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        var t = CafeUIKit.Label(card.transform, "", size, CafeUIKit.Ink);
         t.horizontalOverflow = HorizontalWrapMode.Overflow;
-        t.verticalOverflow = VerticalWrapMode.Overflow;
-
-        var o = go.GetComponent<Outline>();
-        o.effectColor = new Color(0.25f, 0.18f, 0.24f, 0.75f);
-        o.effectDistance = new Vector2(1.6f, -1.6f);
-
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = rt.anchorMax = anchor;
-        rt.anchoredPosition = pos;
-        rt.sizeDelta = sizeDelta;
+        card.gameObject.SetActive(false);
         return t;
     }
 
-    static Font _font;
-    static Font BuiltinFont()
+    static void SetChip(Text t, string text)
     {
-        if (_font != null) return _font;
-        _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        if (_font == null) _font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-        if (_font == null)
-        {
-            var names = Font.GetOSInstalledFontNames();
-            if (names != null && names.Length > 0) _font = Font.CreateDynamicFontFromOSFont(names[0], 32);
-        }
-        return _font;
+        if (t == null) return;
+        bool show = !string.IsNullOrEmpty(text);
+        var go = t.transform.parent.gameObject;
+        if (go.activeSelf != show) go.SetActive(show);
+        if (show && t.text != text) t.text = text;
     }
 
     // ---------------------------------------------------------------- sprites
@@ -202,6 +175,9 @@ public class CafeHUD : MonoBehaviour
 
     void Update()
     {
+        if (_canvasGO != null && _canvasGO.activeSelf == CafeGame.MenuOpen) _canvasGO.SetActive(!CafeGame.MenuOpen);
+        if (CafeGame.MenuOpen) return;
+
         bool hover = false;
         string prompt = "";
         float progress = 0f;
@@ -256,27 +232,19 @@ public class CafeHUD : MonoBehaviour
             var c = _band.color;
             _band.color = new Color(c.r, c.g, c.b, !show ? 0f : (inside ? 1f : 0.55f));
             // Not colour-only: the words say it too.
-            if (inside) prompt = "NOW - let go!";
+            if (inside) prompt = "NOW!";
         }
 
-        if (_prompt != null) _prompt.text = prompt;
-        if (_toast != null) _toast.text = CafeMessage.Visible ? CafeMessage.Current : "";
+        SetChip(_prompt, prompt);
+        SetChip(_toast, CafeMessage.Visible ? CafeMessage.Current : "");
 
-        if (_cupLine != null)
-        {
-            var hands = Interactor != null ? Interactor.Hands : null;
-            _cupLine.text = (hands != null && hands.HasCup)
-                ? "In the cup:  " + hands.Cup.ShortList()
-                : "";
-        }
+        var hands = Interactor != null ? Interactor.Hands : null;
+        SetChip(_cupLine, hands != null && hands.HasCup ? "In the cup:  " + hands.Cup.ShortList() : "");
 
-        if (_orderLine != null)
-        {
-            var om = OrderManager.Instance;
-            _orderLine.text = om == null ? "" :
-                (om.OpenCount == 0 ? "no orders up"
-                                   : om.OpenCount + (om.OpenCount == 1 ? " order up" : " orders up"))
-                + (om.Served > 0 ? "   served " + om.Served : "");
-        }
+        var day = CafeDay.Instance;
+        var om = OrderManager.Instance;
+        string clock = day == null ? "" : (day.IsOpen ? "Day " + day.DayNumber + "   " + day.ClockText : "Closed");
+        if (om != null && om.Served > 0) clock += "   served " + om.Served;
+        SetChip(_orderLine, clock + "\n<size=18>Esc  menu     Tab  recipes</size>");
     }
 }
