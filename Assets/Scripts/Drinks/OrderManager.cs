@@ -118,17 +118,16 @@ public class OrderManager : MonoBehaviour
 
         _served++;
         string note = cup.TechniqueNote();
+        string stars = DrinkScore.Stars(bestScore, cup.Execution) + "/5 stars";
         if (bestScore >= 0.999f)
         {
             _perfect++;
-            CafeMessage.Show(note == null
-                ? name + " - exactly right"
-                : name + " - exactly right. " + note, 3.4f);
+            CafeMessage.Show(name + " - exactly right, " + stars
+                + (note == null ? "" : ". " + note), 3.4f);
         }
         else
         {
-            CafeMessage.Show(name + " - close enough ("
-                + Mathf.RoundToInt(bestScore * 100f) + "%)"
+            CafeMessage.Show(name + " - close enough, " + stars
                 + (note == null ? "" : ". " + note), 3.4f);
         }
         return true;

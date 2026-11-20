@@ -40,7 +40,7 @@ public class PlayerHands : MonoBehaviour
 
         var wob = _cupGO.GetComponent<LiquidWobble>();
         if (wob == null) wob = _cupGO.AddComponent<LiquidWobble>();
-        if (wob.Liquid == null) wob.Liquid = _cup.LiquidVisual;
+        if (wob.Liquid == null) wob.Liquid = _cup.SloshRoot;
 
         _target = HoldAnchor;
         CafeMessage.Show("Took a cup");

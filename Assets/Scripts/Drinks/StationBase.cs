@@ -52,7 +52,41 @@ public abstract class StationBase : MonoBehaviour, IInteractable
         _running = false;
         Progress = 0f;
         SetFX(false);
+        if (hands != null && hands.HasCup) hands.Cup.CancelPour();   // no-op once a station committed
         if (hands != null) hands.ReturnCup();
+    }
+
+    // ---------------------------------------------------------------- minigame
+
+    /// Shown in place of the prompt while this station runs: what to do right now.
+    public virtual string Hint { get { return null; } }
+
+    /// Target window on the HUD progress ring, as (start, end) in 0..1. Zero = none.
+    public virtual Vector2 Band { get { return Vector2.zero; } }
+
+    /// One frame of the station's minigame. Returns true when the step is over.
+    /// Default: hold to fill the ring, let go to stop early.
+    public virtual bool Tick(PlayerHands hands, bool held, bool pressed, float dt)
+    {
+        if (!held) { End(hands, Progress); return true; }
+        Hold(hands, Mathf.Clamp01(Progress + dt / Mathf.Max(0.01f, Duration)));
+        if (Progress >= 1f) { End(hands, 1f); return true; }
+        return false;
+    }
+
+    /// 1 inside the band, easing down to a floor outside it. Never zero: cozy.
+    protected static float BandQuality(float t, Vector2 band)
+    {
+        if (t >= band.x && t <= band.y) return 1f;
+        float miss = t < band.x ? band.x - t : t - band.y;
+        return Mathf.Lerp(0.35f, 0.85f, Mathf.Clamp01(1f - miss / 0.3f));
+    }
+
+    /// How much of a full portion has gone in, given the ring position and where
+    /// the band centre sits. Starts when the stream lands, can overshoot.
+    protected float Portion(float t, float target)
+    {
+        return Mathf.Max(0f, (t - PourStartAt) / Mathf.Max(0.01f, target - PourStartAt));
     }
 
     protected virtual void Update()

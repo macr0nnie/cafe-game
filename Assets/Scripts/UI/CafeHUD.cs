@@ -15,6 +15,8 @@ public class CafeHUD : MonoBehaviour
 
     Image _heart;
     Image _ring;
+    Image _band;
+    RectTransform _bandRT;
     Text  _prompt;
     Text  _toast;
     Text  _cupLine;
@@ -45,6 +47,23 @@ public class CafeHUD : MonoBehaviour
         scaler.referenceResolution = new Vector2(1920f, 1080f);
         scaler.matchWidthOrHeight = 0.5f;
 
+        // Target band: the arc you are aiming for, around the outside of the progress ring.
+        var bandGO = new GameObject("TargetBand", typeof(Image));
+        bandGO.transform.SetParent(canvasGO.transform, false);
+        _band = bandGO.GetComponent<Image>();
+        _band.sprite = RingSprite(128, 0.80f);
+        _band.type = Image.Type.Filled;
+        _band.fillMethod = Image.FillMethod.Radial360;
+        _band.fillOrigin = 2;                     // top
+        _band.fillClockwise = true;
+        _band.fillAmount = 0f;
+        _band.color = new Color(0.78f, 0.94f, 0.88f, 0f);   // palette Accent
+        _band.raycastTarget = false;
+        _bandRT = bandGO.GetComponent<RectTransform>();
+        _bandRT.anchorMin = _bandRT.anchorMax = new Vector2(0.5f, 0.5f);
+        _bandRT.anchoredPosition = Vector2.zero;
+        _bandRT.sizeDelta = new Vector2(110f, 110f);
+
         // Radial progress sits just behind the heart.
         var ringGO = new GameObject("Progress", typeof(Image));
         ringGO.transform.SetParent(canvasGO.transform, false);
@@ -60,7 +79,7 @@ public class CafeHUD : MonoBehaviour
         var ringRT = ringGO.GetComponent<RectTransform>();
         ringRT.anchorMin = ringRT.anchorMax = new Vector2(0.5f, 0.5f);
         ringRT.anchoredPosition = Vector2.zero;
-        ringRT.sizeDelta = new Vector2(64f, 64f);
+        ringRT.sizeDelta = new Vector2(88f, 88f);
 
         // The heart itself.
         var heartGO = new GameObject("HeartCrosshair", typeof(Image));
@@ -186,6 +205,7 @@ public class CafeHUD : MonoBehaviour
         bool hover = false;
         string prompt = "";
         float progress = 0f;
+        Vector2 band = Vector2.zero;
 
         if (Interactor != null)
         {
@@ -194,7 +214,9 @@ public class CafeHUD : MonoBehaviour
             {
                 hover = true;
                 progress = Interactor.ActiveProgress;
-                prompt = "";
+                var st = Interactor.ActiveStation;
+                band = st != null ? st.Band : Vector2.zero;
+                prompt = st != null && st.Hint != null ? st.Hint : "";
             }
             else if (f != null)
             {
@@ -221,6 +243,20 @@ public class CafeHUD : MonoBehaviour
             _ring.fillAmount = progress;
             var c = _ring.color;
             _ring.color = new Color(c.r, c.g, c.b, progress > 0.001f ? 0.95f : 0f);
+        }
+
+        if (_band != null)
+        {
+            bool show = band.y > band.x;
+            _band.fillAmount = show ? band.y - band.x : 0f;
+            // Clockwise from the top, so rotate the start of the fill round to band.x.
+            _bandRT.localRotation = Quaternion.Euler(0f, 0f, -band.x * 360f);
+            // Brightens while the progress needle is inside it: "let go now".
+            bool inside = show && progress >= band.x && progress <= band.y;
+            var c = _band.color;
+            _band.color = new Color(c.r, c.g, c.b, !show ? 0f : (inside ? 1f : 0.55f));
+            // Not colour-only: the words say it too.
+            if (inside) prompt = "NOW - let go!";
         }
 
         if (_prompt != null) _prompt.text = prompt;

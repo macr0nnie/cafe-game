@@ -12,6 +12,10 @@ Shader "Cafe/Toon"
         _RimPower       ("Rim Power", Range(1,16)) = 6
         _RimStrength    ("Rim Strength", Range(0,1)) = 0
         _EmissionColor  ("Emission", Color) = (0,0,0,0)
+        // Opaque by default. The glass cup flips these to alpha blend.
+        [HideInInspector] _SrcBlend ("Src Blend", Float) = 1
+        [HideInInspector] _DstBlend ("Dst Blend", Float) = 0
+        [HideInInspector] _ZWrite   ("ZWrite", Float) = 1
     }
 
     SubShader
@@ -22,6 +26,8 @@ Shader "Cafe/Toon"
         {
             Name "ForwardLit"
             Tags { "LightMode"="UniversalForward" }
+            Blend [_SrcBlend] [_DstBlend]
+            ZWrite [_ZWrite]
 
             HLSLPROGRAM
             #pragma vertex vert
@@ -143,7 +149,7 @@ Shader "Cafe/Toon"
                 col += _EmissionColor.rgb;
 
                 col = MixFog(col, input.fogCoord);
-                return half4(col, 1.0);
+                return half4(col, _BaseColor.a);
             }
             ENDHLSL
         }
