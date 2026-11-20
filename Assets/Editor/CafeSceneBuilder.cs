@@ -442,7 +442,7 @@ public static class CafeSceneBuilder
             var l = lgo.AddComponent<Light>();
             l.type = LightType.Point;
             l.color = Hex("#FFD9A0");
-            l.intensity = 6f;
+            l.intensity = 1.2f;
             l.range = 4.6f;
             l.shadows = LightShadows.None;
         }
