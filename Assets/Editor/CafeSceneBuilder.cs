@@ -75,6 +75,7 @@ public static class CafeSceneBuilder
         BuildStations(stations);
         var player = BuildPlayer(gameplay);
         BuildOrders(gameplay, player);
+        gameplay.gameObject.AddComponent<CafeDay>();
         BuildAtmosphere(fx);
         BuildLighting(lighting);
 
@@ -846,6 +847,10 @@ public static class CafeSceneBuilder
 
         var hud = p.AddComponent<CafeHUD>();
         hud.Interactor = inter;
+
+        // UI: open orders down the left, and every menu screen.
+        p.AddComponent<OrderBoard>().Hands = hands;
+        p.AddComponent<CafeMenus>();
 
         return p;
     }

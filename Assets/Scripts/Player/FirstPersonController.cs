@@ -46,11 +46,12 @@ public class FirstPersonController : MonoBehaviour
 
     void Update()
     {
-        if (CafeInput.CancelDown()) SetLock(!_locked);
+        // Menus own the cursor; the cafe gets it back when they close.
+        if (_locked == CafeGame.MenuOpen) SetLock(!CafeGame.MenuOpen);
         if (!_locked) return;
 
         // Look
-        Vector2 look = CafeInput.Look() * Sensitivity;
+        Vector2 look = CafeInput.Look() * Sensitivity * CafeSettings.MouseSensitivity;
         transform.Rotate(Vector3.up, look.x, Space.World);
         _pitch = Mathf.Clamp(_pitch - look.y, -PitchLimit, PitchLimit);
         if (CameraPivot != null)
@@ -72,7 +73,7 @@ public class FirstPersonController : MonoBehaviour
         if (CameraPivot != null)
         {
             float sp = new Vector2(_planar.x, _planar.z).magnitude;
-            if (sp > 0.1f)
+            if (sp > 0.1f && CafeSettings.CameraBob)
             {
                 _bobT += Time.deltaTime * BobFrequency * (sp / WalkSpeed);
                 float yb = Mathf.Sin(_bobT) * BobAmplitude;

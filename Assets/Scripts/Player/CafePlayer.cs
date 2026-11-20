@@ -81,6 +81,19 @@ public static class CafeInput
 #endif
     }
 
+    public static bool RecipesDown()
+    {
+#if ENABLE_INPUT_SYSTEM
+        var k = Keyboard.current;
+        if (k != null) return k.tabKey.wasPressedThisFrame;
+#endif
+#if ENABLE_LEGACY_INPUT_MANAGER
+        return Input.GetKeyDown(KeyCode.Tab);
+#else
+        return false;
+#endif
+    }
+
     public static bool SprintHeld()
     {
 #if ENABLE_INPUT_SYSTEM

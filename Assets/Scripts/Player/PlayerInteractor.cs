@@ -28,6 +28,7 @@ public class PlayerInteractor : MonoBehaviour
 
     void Update()
     {
+        if (CafeGame.MenuOpen) return;
         if (_active == null) UpdateFocus();
 
         if (_active == null)
