@@ -27,6 +27,17 @@ public class CafeMenus : MonoBehaviour
     // Today's numbers, gathered from events.
     int _served, _perfect, _starSum, _tips;
 
+    /// Scenes built before the menus existed still get them: no rebuild needed.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    static void Bootstrap()
+    {
+        var hands = Object.FindFirstObjectByType<PlayerHands>();
+        if (hands == null) return;      // not the cafe scene
+        if (Object.FindFirstObjectByType<CafeDay>() == null) new GameObject("CafeDay").AddComponent<CafeDay>();
+        if (Object.FindFirstObjectByType<OrderBoard>() == null) hands.gameObject.AddComponent<OrderBoard>().Hands = hands;
+        if (Object.FindFirstObjectByType<CafeMenus>() == null) hands.gameObject.AddComponent<CafeMenus>();
+    }
+
     void Awake()
     {
         EnsureEventSystem();
