@@ -84,14 +84,15 @@ public class OrderManager : MonoBehaviour
     }
 
     /// Serve the cup against the best-matching open order.
-    public void TryServe(CupContents cup)
+    /// Returns true when an order took the cup.
+    public bool TryServe(CupContents cup)
     {
-        if (cup == null) return;
+        if (cup == null) return false;
 
         if (_open.Count == 0)
         {
             CafeMessage.Show("No orders up - made a " + cup.Describe(), 3f);
-            return;
+            return false;
         }
 
         int best = -1;
@@ -105,7 +106,7 @@ public class OrderManager : MonoBehaviour
         if (best < 0 || bestScore < AcceptThreshold)
         {
             CafeMessage.Show("Not what anyone ordered - that is " + cup.Describe(), 3.4f);
-            return;
+            return false;
         }
 
         var t = _open[best];
@@ -130,5 +131,6 @@ public class OrderManager : MonoBehaviour
                 + Mathf.RoundToInt(bestScore * 100f) + "%)"
                 + (note == null ? "" : ". " + note), 3.4f);
         }
+        return true;
     }
 }
