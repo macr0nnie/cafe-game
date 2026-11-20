@@ -5,6 +5,7 @@ using UnityEngine;
 public class OrderTicket : MonoBehaviour
 {
     public Recipe Recipe;
+    public float PlacedAt;
     public float SwayAmplitude = 4.5f;
     public float SwaySpeed = 1.1f;
 
