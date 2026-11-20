@@ -14,7 +14,11 @@ public static class CafePostFX
     {
         T c;
         if (p.TryGet<T>(out c) && c != null) return c;
-        return p.Add<T>(true);
+        c = p.Add<T>(true);
+        // Add() only creates the component in memory; without this it is saved as a null
+        // reference and the effect is gone after the next editor restart.
+        AssetDatabase.AddObjectToAsset(c, p);
+        return c;
     }
 
     [MenuItem("Cafe/2. Add Post-Processing Volume", false, 10)]
@@ -28,6 +32,8 @@ public static class CafePostFX
             profile = ScriptableObject.CreateInstance<VolumeProfile>();
             AssetDatabase.CreateAsset(profile, ProfilePath);
         }
+        // Profiles saved by the old version hold null entries, which make TryGet/Add throw.
+        profile.components.RemoveAll(x => x == null);
 
         // Neutral tonemapping. ACES desaturates the pastels toward grey and the
         // whole art direction goes with it.
