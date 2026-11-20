@@ -41,7 +41,8 @@ public static class CafeSceneBuilder
                 "Could not find \"" + ShaderName + "\". Check CafeToon.shader imported and this is a URP project.", "OK");
             return;
         }
-        if (!EditorUtility.DisplayDialog("Build cafe",
+        // Batch mode (tests, CI) cannot answer a dialog, so it builds without asking.
+        if (!Application.isBatchMode && !EditorUtility.DisplayDialog("Build cafe",
             "This replaces the current scene with a freshly built cafe.\n\nUnsaved changes will be lost.",
             "Build", "Cancel")) return;
 

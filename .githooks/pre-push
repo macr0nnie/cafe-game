@@ -1,0 +1,5 @@
+#!/bin/sh
+# Runs the Unity test suite before every push. Enable once per clone with:
+#   git config core.hooksPath .githooks
+# Skip in an emergency with: git push --no-verify
+exec powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(git rev-parse --show-toplevel)/tools/run-tests.ps1"
