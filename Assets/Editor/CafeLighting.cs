@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -113,6 +114,8 @@ public static class CafeLighting
             EditorUtility.SetDirty(mat);
         }
         AssetDatabase.SaveAssets();
+        // Light and RenderSettings edits from script don't dirty the scene, so Ctrl+S skipped them.
+        EditorSceneManager.MarkAllScenesDirty();
 
         Debug.Log("Cafe lighting preset applied: " + m.Name);
     }
