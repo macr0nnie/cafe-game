@@ -36,18 +36,41 @@ public class LookdevSlot
     public string tiers, note;
 }
 
+/// A customer point from Blender (door, queue spot, pickup, seat): where it is and
+/// which way someone standing or sitting there faces. Already in Unity axes.
+[Serializable]
+public class LookdevPoint
+{
+    public string name;
+    public float[] pos;
+    public float[] facing;
+    public string kind;     // chair, stool, sofa, or empty for standing spots
+
+    public Vector3 Position { get { return new Vector3(pos[0], pos[1], pos[2]); } }
+    public Quaternion Rotation
+    {
+        get
+        {
+            var f = new Vector3(facing[0], 0f, facing[2]);
+            return f.sqrMagnitude > 1e-6f ? Quaternion.LookRotation(f.normalized, Vector3.up) : Quaternion.identity;
+        }
+    }
+}
+
 [Serializable]
 public class LookdevData
 {
     public float fps;
     public LookdevClip[] clips;
     public LookdevSlot[] slots;
+    public LookdevPoint[] points;
 
     public static LookdevData Parse(string json)
     {
         var d = JsonUtility.FromJson<LookdevData>(json);
         if (d.clips == null) d.clips = new LookdevClip[0];
         if (d.slots == null) d.slots = new LookdevSlot[0];
+        if (d.points == null) d.points = new LookdevPoint[0];
         return d;
     }
 

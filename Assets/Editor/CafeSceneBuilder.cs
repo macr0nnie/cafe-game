@@ -774,10 +774,10 @@ public static class CafeSceneBuilder
             var t = root.Find(n);
             if (t != null)
             {
-                var rest = New("CupAnchor", t);
-                rest.localPosition = new Vector3(0f, 0f, SpoutZ);
+                var tubRest = New("CupAnchor", t);
+                tubRest.localPosition = new Vector3(0f, 0f, SpoutZ);
                 var st = t.GetComponent<IngredientStation>();
-                if (st != null) st.CupAnchor = rest;
+                if (st != null) st.CupAnchor = tubRest;
             }
         }
 
@@ -921,13 +921,13 @@ public static class CafeSceneBuilder
     // ------------------------------------------------------------------ customers
 
     // Hip height of the placeholder customer; seats drop the body by (hip - seat top).
-    const float NpcHipY = 0.62f;
+    internal const float NpcHipY = 0.62f;
 
-    static readonly string[] Outfits = { "Counter", "Accent", "Taro", "Strawberry", "Matcha", "Vanilla", "WallMint" };
+    internal static readonly string[] Outfits = { "Counter", "Accent", "Taro", "Strawberry", "Matcha", "Vanilla", "WallMint" };
 
     /// Placeholder chibi customer: big low-poly head, oversized top, long thin legs.
     /// Swap the prefab's meshes for real models later; the Customer component stays.
-    static void MakeCustomerPrefab()
+    internal static void MakeCustomerPrefab()
     {
         Directory.CreateDirectory(PrefabDir);
         var go = new GameObject("Customer");

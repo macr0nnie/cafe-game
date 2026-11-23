@@ -13,11 +13,14 @@ public static class CafeLookdevSceneBuilder
 {
     const string FbxPath   = LookdevImport.Folder + "CafeLookdev.fbx";
     const string DataPath  = LookdevImport.Folder + "CafeLookdev_data.json";
-    const string MatDir    = CafeSceneBuilder.MatDir + "/Lookdev";
+    // Kept apart from Assets/Art/Materials: these colours come from the Blender mock, not the
+    // locked 18-colour palette the procedural builder (and its test) uses.
+    const string MatDir    = LookdevImport.Folder + "Materials";
     const string ScenePath = "Assets/Scenes/CozyCafe_Lookdev.unity";
 
-    // Blender (x, y, z), Z up  ->  Unity (x, y, z), Y up. Same mapping as tools/export_for_unity.py.
-    static Vector3 B(float x, float y, float z) { return new Vector3(-x, z, -y); }
+    // Blender (x, y, z), Z up  ->  Unity (x, y, z), Y up: Y and Z swap (measured on import with
+    // bakeAxisConversion). Same mapping as tools/export_for_unity.py.
+    static Vector3 B(float x, float y, float z) { return new Vector3(x, z, y); }
 
     static readonly Dictionary<string, Transform> _byName = new Dictionary<string, Transform>();
     static LookdevAnimator _anim;
@@ -82,12 +85,22 @@ public static class CafeLookdevSceneBuilder
 
         var player = CafeSceneBuilder.BuildPlayer(gameplay);
         player.transform.position = B(1.0f, 1.76f, 0.05f);
-        player.transform.rotation = Quaternion.identity;   // facing the customers; turn round for the back bar
+        // Customers are on the -Z side here; turn round for the back bar.
+        player.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
 
         CafeSceneBuilder.BuildOrders(gameplay, player);
         var line = gameplay.Find("OrderLine");
-        if (line != null) line.position += B(0.8f, 1.42f, 2.30f) - new Vector3(-0.1f, 2.38f, -2.62f);
+        if (line != null)
+        {
+            // The line was built for a barista on its -Z side; here the barista stands on +Z.
+            var centre = B(0.8f, 1.42f, 2.30f);
+            line.position += centre - new Vector3(-0.1f, 2.38f, -2.62f);
+            line.RotateAround(centre, Vector3.up, 180f);
+        }
         gameplay.gameObject.AddComponent<CafeDay>();
+
+        BuildCustomers(gameplay, LookdevData.Parse(data.text));
+        BakeNavMesh(gameplay, player);
 
         CafeSceneBuilder.BuildLighting(lighting);
         AddBulbLights(cafe, lighting);
@@ -179,7 +192,7 @@ public static class CafeLookdevSceneBuilder
                     {
                         Color c = mats[i].HasProperty("_BaseColor") ? mats[i].GetColor("_BaseColor") : mats[i].color;
                         c.a = 1f;
-                        m = CafeSceneBuilder.Mat("Lookdev/" + key, shader, c, shadow, 3f, 0.03f, 0.5f);
+                        m = ToonMat(key, shader, c, shadow);
                         if (key == "M_SkyCard")
                         {
                             m.SetColor("_EmissionColor", c * 0.35f);
@@ -192,6 +205,21 @@ public static class CafeLookdevSceneBuilder
             }
             r.sharedMaterials = mats;
         }
+    }
+
+    static Material ToonMat(string name, Shader shader, Color baseCol, Color shadow)
+    {
+        string path = MatDir + "/" + name + ".mat";
+        var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (m == null) { m = new Material(shader); AssetDatabase.CreateAsset(m, path); }
+        m.shader = shader;
+        m.SetColor("_BaseColor", baseCol);
+        m.SetColor("_ShadowTint", shadow);
+        m.SetFloat("_Bands", 3f);
+        m.SetFloat("_BandSoftness", 0.03f);
+        m.SetFloat("_AmbientLift", 0.5f);
+        EditorUtility.SetDirty(m);
+        return m;
     }
 
     // ------------------------------------------------------------------ colliders
@@ -391,6 +419,92 @@ public static class CafeLookdevSceneBuilder
             oven.AddComponent<PropToggle>().Noun = "oven";
             Clips(oven, new[] { C("T2_Stove_Door", "Stove_Door_Open") }, null, new[] { C("T2_Stove_Door", "Stove_Door_Close") });
         }
+    }
+
+    // ------------------------------------------------------------------ customers
+
+    /// Door, till queue, pickup spot and seats come from the Blender NPC points, so moving
+    /// an empty in Blender and re-exporting moves the customers' route too.
+    static void BuildCustomers(Transform root, LookdevData data)
+    {
+        CafeSceneBuilder.MakeCustomerPrefab();
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Prefabs/Customer.prefab");
+
+        var mgr = Object.FindAnyObjectByType<OrderManager>();
+        if (mgr != null) mgr.CustomersOrder = true;
+
+        var c = New("Customers", root);
+        Transform door = null, pickup = null;
+        var queue = New("TillQueue", c).gameObject.AddComponent<CustomerQueue>();
+        var spots = new List<Transform>();
+        var seats = New("Seats", c);
+
+        foreach (var p in data.points)
+        {
+            if (p.name == "DOOR_SPAWN") door = Point(p, c);
+            else if (p.name == "PICKUP_01") pickup = Point(p, c);
+            else if (p.name.StartsWith("QUEUE_")) spots.Add(Point(p, queue.transform));
+            else if (p.name.StartsWith("SEAT_"))
+            {
+                // The point sits at seat height; the Seat lives on the floor below it.
+                var t = Point(p, seats);
+                float seatTop = t.position.y;
+                t.position = new Vector3(t.position.x, 0f, t.position.z);
+                var seat = t.gameObject.AddComponent<Seat>();
+                // Chairs and stools are walked up to from behind; a sofa from in front.
+                seat.ApproachOffset = new Vector3(0f, 0f, p.kind == "sofa" ? 0.6f : -0.6f);
+                seat.SitDrop = CafeSceneBuilder.NpcHipY - seatTop;
+            }
+        }
+        spots.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
+        queue.Spots = spots.ToArray();
+
+        var serve = Find("Pickup_Shelf");
+        if (serve != null && serve.GetComponent<ServeWindow>() != null)
+        {
+            // Served cups wait on top of the pickup shelf, where customers can see them.
+            var rest = New("CupRest", _anchors);
+            rest.position = B(2.26f, 0.62f, 1.22f);
+            rest.rotation = Quaternion.Euler(0f, 180f, 0f);
+            serve.GetComponent<ServeWindow>().CupRest = rest;
+        }
+
+        var sp = c.gameObject.AddComponent<CustomerSpawner>();
+        sp.Prefab = prefab != null ? prefab.GetComponent<Customer>() : null;
+        sp.Door = door;
+        sp.Pickup = pickup;
+        sp.Queue = queue;
+        var outfits = new List<Material>();
+        foreach (var k in CafeSceneBuilder.Outfits) outfits.Add(CafeSceneBuilder.M(k));
+        sp.Outfits = outfits.ToArray();
+        sp.MaxInside = seats.childCount + queue.Spots.Length;
+        if (door == null || pickup == null || spots.Count == 0)
+            Debug.LogError("Lookdev: customer points missing from the export (DOOR_SPAWN, PICKUP_01, QUEUE_xx).");
+    }
+
+    static Transform Point(LookdevPoint p, Transform parent)
+    {
+        var t = New(p.name, parent);
+        t.position = p.Position;
+        t.rotation = p.Rotation;
+        return t;
+    }
+
+    /// Walkable floor from the colliders, saved beside this scene (not the original cafe's).
+    static void BakeNavMesh(Transform root, GameObject player)
+    {
+        var nav = New("Navigation", root).gameObject.AddComponent<Unity.AI.Navigation.NavMeshSurface>();
+        nav.collectObjects = Unity.AI.Navigation.CollectObjects.All;
+        nav.useGeometry = UnityEngine.AI.NavMeshCollectGeometry.PhysicsColliders;
+
+        bool wasActive = player.activeSelf;
+        player.SetActive(false);
+        nav.BuildNavMesh();
+        player.SetActive(wasActive);
+
+        const string path = "Assets/Scenes/CozyCafe_Lookdev_NavMesh.asset";
+        AssetDatabase.DeleteAsset(path);
+        AssetDatabase.CreateAsset(nav.navMeshData, path);
     }
 
     static void AddToBuildSettings()
