@@ -29,7 +29,7 @@ public static class CafeLighting
         KeyDir = new Vector3(-0.62f, -0.67f, -0.41f),      // ~42 deg elevation
         ShadowTint = "#B7A6C9",
         AmbSky = "#FFF4F0", AmbEquator = "#E4DCEE", AmbGround = "#B7A6C9",
-        PendantIntensity = 0.6f,   // 3/8/10 were tuned while the toon shader ignored point lights
+        PendantIntensity = 1.4f,   // downward spots with smooth falloff; tuned from audit renders
         FogColor = "#FDF1E7", FogDensity = 0.012f,
     };
 
@@ -82,7 +82,7 @@ public static class CafeLighting
                 l.intensity = m.KeyIntensity;
                 l.transform.rotation = Quaternion.LookRotation(m.KeyDir.normalized);
             }
-            else if (l.type == LightType.Point)
+            else if (l.type == LightType.Point || l.type == LightType.Spot)
             {
                 l.intensity = m.PendantIntensity;
             }

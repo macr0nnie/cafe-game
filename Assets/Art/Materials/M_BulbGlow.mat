@@ -32,8 +32,11 @@ Material:
     - _AmbientLift: 1
     - _BandSoftness: 0.03
     - _Bands: 3
+    - _DstBlend: 0
     - _RimPower: 6
     - _RimStrength: 0
+    - _SrcBlend: 1
+    - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 1, g: 0.9529412, b: 0.76862746, a: 1}
     - _EmissionColor: {r: 1.7, g: 1.62, b: 1.3066667, a: 1.7}

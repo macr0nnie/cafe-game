@@ -139,7 +139,8 @@ Shader "Cafe/Toon"
                         Light l = GetAdditionalLight(lightIndex, input.positionWS);
                         float nl = saturate(dot(normalWS, l.direction));
                         float la = l.distanceAttenuation * l.shadowAttenuation;
-                        col += baseCol * l.color * Band(nl * la, _Bands, _BandSoftness);
+                        // Band the facing only; distance falloff stays smooth, or every lamp draws hard rings.
+                        col += baseCol * l.color * Band(nl, _Bands, _BandSoftness) * la;
                     LIGHT_LOOP_END
                 #endif
 

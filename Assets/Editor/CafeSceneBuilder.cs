@@ -41,7 +41,7 @@ public static class CafeSceneBuilder
                 "Could not find \"" + ShaderName + "\". Check CafeToon.shader imported and this is a URP project.", "OK");
             return;
         }
-        if (!EditorUtility.DisplayDialog("Build cafe",
+        if (!Application.isBatchMode && !EditorUtility.DisplayDialog("Build cafe",
             "This replaces the current scene with a freshly built cafe.\n\nUnsaved changes will be lost.",
             "Build", "Cancel")) return;
 
@@ -352,11 +352,39 @@ public static class CafeSceneBuilder
         Obj("Shelf_Lower", "Shelf", "Cream", new Vector3(1.2f, 1.72f, -4.38f), sh);
         Obj("Shelf_Upper", "Shelf", "Cream", new Vector3(1.2f, 2.20f, -4.38f), sh);
         Obj("Menu_Board",  "MenuBoard", "LineDark", new Vector3(-2.9f, 2.10f, -4.40f), sh);
+        MenuBoardText(new Vector3(-2.9f, 2.10f, -4.40f), sh);
 
         string[] cupCols = { "WarmWhite", "Accent", "Counter" };
         for (int i = 0; i < 6; i++)
             Obj("Shelf_Mug_" + i, "MugBody", cupCols[i % 3],
                 new Vector3(0.05f + i * 0.30f, 2.2275f, -4.38f), sh);
+    }
+
+    /// Chalk lettering on the menu board: every drink the cafe makes, in two
+    /// columns, reading towards the barista and the room (+Z).
+    static void MenuBoardText(Vector3 centre, Transform parent)
+    {
+        var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        var all = RecipeBook.All;
+        int half = (all.Length + 1) / 2;
+        for (int c = 0; c < 2; c++)
+        {
+            var sb = new System.Text.StringBuilder(c == 0 ? "MENU\n" : "\n");
+            for (int i = c * half; i < Mathf.Min(all.Length, (c + 1) * half); i++) sb.Append(all[i].Name).Append('\n');
+            var go = new GameObject("Menu_Text_" + c);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = centre + new Vector3(c == 0 ? 0.33f : -0.33f, 0.38f, 0.03f);
+            go.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            var tm = go.AddComponent<TextMesh>();
+            tm.text = sb.ToString();
+            tm.anchor = TextAnchor.UpperCenter;
+            tm.alignment = TextAlignment.Center;
+            tm.fontSize = 64;
+            tm.characterSize = 0.0105f;
+            tm.lineSpacing = 1.05f;
+            tm.color = Hex("#FFF5E6");
+            if (font != null) { tm.font = font; go.GetComponent<MeshRenderer>().sharedMaterial = font.material; }
+        }
     }
 
     // ------------------------------------------------------------------ seating
@@ -448,14 +476,19 @@ public static class CafeSceneBuilder
             var bulb = Obj("Bulb", "Bulb", "BulbGlow", new Vector3(x, 2.33f, z), p);
             bulb.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
 
-            var lgo = new GameObject("Point_Light");
+            // The shade blocks light going up, so a downward spot: a warm pool on the
+            // table, not a hot ring on the ceiling and nearby walls.
+            var lgo = new GameObject("Pendant_Light");
             lgo.transform.SetParent(p, false);
             lgo.transform.localPosition = new Vector3(x, 2.24f, z);
+            lgo.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
             var l = lgo.AddComponent<Light>();
-            l.type = LightType.Point;
+            l.type = LightType.Spot;
+            l.spotAngle = 120f;
+            l.innerSpotAngle = 50f;
             l.color = Hex("#FFD9A0");
             l.intensity = 1.2f;
-            l.range = 4.6f;
+            l.range = 3.6f;
             l.shadows = LightShadows.None;
         }
     }
@@ -494,7 +527,9 @@ public static class CafeSceneBuilder
 
     static void BuildDressing(Transform root)
     {
-        Obj("Pastry_Case", "PastryCase", "Cream", new Vector3(-1.75f, CounterTopY, CounterZ), root);
+        // Glass, so the pastries inside are on show instead of hidden in a white box.
+        Obj("Pastry_Case", "PastryCase", "Glass", new Vector3(-1.75f, CounterTopY, CounterZ), root)
+            .GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
         for (int i = 0; i < 3; i++)
             Obj("Pastry_" + i, "Pastry", "Pastry",
                 new Vector3(-2.08f + i * 0.33f, CounterTopY + 0.12f, CounterZ), root,
