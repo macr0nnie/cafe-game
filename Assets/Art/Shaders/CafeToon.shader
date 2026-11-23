@@ -12,6 +12,7 @@ Shader "Cafe/Toon"
         _RimPower       ("Rim Power", Range(1,16)) = 6
         _RimStrength    ("Rim Strength", Range(0,1)) = 0
         _EmissionColor  ("Emission", Color) = (0,0,0,0)
+        _BakedStrength  ("Baked Light Strength", Range(0,2)) = 0.6
         // Opaque by default. The glass cup flips these to alpha blend.
         [HideInInspector] _SrcBlend ("Src Blend", Float) = 1
         [HideInInspector] _DstBlend ("Dst Blend", Float) = 0
@@ -40,6 +41,10 @@ Shader "Cafe/Toon"
             #pragma multi_compile _ _ADDITIONAL_LIGHT_SHADOWS
             #pragma multi_compile _ _SHADOWS_SOFT
             #pragma multi_compile_fog
+            // Baked lighting: lightmaps on static geometry, baked shadows for the sun (shadowmask).
+            #pragma multi_compile _ LIGHTMAP_ON
+            #pragma multi_compile _ LIGHTMAP_SHADOW_MIXING
+            #pragma multi_compile _ SHADOWS_SHADOWMASK
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
@@ -55,6 +60,7 @@ Shader "Cafe/Toon"
                 float  _BandSoftness;
                 float  _RimPower;
                 float  _RimStrength;
+                float  _BakedStrength;
             CBUFFER_END
 
             TEXTURE2D(_BaseMap);
@@ -65,6 +71,7 @@ Shader "Cafe/Toon"
                 float4 positionOS : POSITION;
                 float3 normalOS   : NORMAL;
                 float2 uv         : TEXCOORD0;
+                float2 lightmapUV : TEXCOORD1;
             };
 
             struct Varyings
@@ -74,6 +81,7 @@ Shader "Cafe/Toon"
                 float3 normalWS   : TEXCOORD1;
                 float3 positionWS : TEXCOORD2;
                 float  fogCoord   : TEXCOORD3;
+                DECLARE_LIGHTMAP_OR_SH(lightmapUV, vertexSH, 4);
             };
 
             // Quantises x into N bands. _BandSoftness 0 gives hard steps.
@@ -97,6 +105,8 @@ Shader "Cafe/Toon"
                 o.normalWS   = n.normalWS;
                 o.uv         = TRANSFORM_TEX(input.uv, _BaseMap);
                 o.fogCoord   = ComputeFogFactor(p.positionCS.z);
+                OUTPUT_LIGHTMAP_UV(input.lightmapUV, unity_LightmapST, o.lightmapUV);
+                OUTPUT_SH(o.normalWS, o.vertexSH);
                 return o;
             }
 
@@ -114,18 +124,34 @@ Shader "Cafe/Toon"
                     float4 shadowCoord = float4(0,0,0,0);
                 #endif
 
-                Light mainLight = GetMainLight(shadowCoord);
+                // Static geometry reads the sun's shadows from the bake; only moving things
+                // (customers, cups, doors) still render into the realtime shadow map.
+                half4 shadowMask = SAMPLE_SHADOWMASK(input.lightmapUV);
+                Light mainLight = GetMainLight(shadowCoord, input.positionWS, shadowMask);
 
                 float ndotl = saturate(dot(normalWS, mainLight.direction));
                 float atten = mainLight.shadowAttenuation * mainLight.distanceAttenuation;
                 float band  = Band(ndotl * atten, _Bands, _BandSoftness);
 
-                // Ambient probe lifts the shadow colour so it never reads dead.
+                // Ambient lifts the shadow colour so it never reads dead. With a lightmap this is
+                // the baked light (bounce + the baked pendants); otherwise the light probes.
                 float3 ambient = SampleSH(normalWS);
+                float3 gi = ambient;
+                #if defined(LIGHTMAP_ON)
+                    gi = SampleLightmap(input.lightmapUV, normalWS);
+                #endif
                 float3 shadowCol = baseCol * _ShadowTint.rgb * (ambient * _AmbientLift + (1.0 - _AmbientLift));
                 float3 litCol    = baseCol * mainLight.color;
 
                 float3 col = lerp(shadowCol, litCol, band);
+
+                // Baked pendant light: whatever the bake adds above the room's ambient, in the
+                // same bands a realtime pendant would use, so pools of light keep their toon steps.
+                #if defined(LIGHTMAP_ON)
+                    float3 extra = max(gi - ambient, 0.0);
+                    float lum = max(Luminance(extra), 1e-4);
+                    col += baseCol * extra * (Band(saturate(lum), _Bands, _BandSoftness) / lum) * _BakedStrength;
+                #endif
 
                 // Pendant lights and any other additional lights, banded the same way.
                 #ifdef _ADDITIONAL_LIGHTS
@@ -136,7 +162,7 @@ Shader "Cafe/Toon"
                     inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);
                     uint count = GetAdditionalLightsCount();
                     LIGHT_LOOP_BEGIN(count)
-                        Light l = GetAdditionalLight(lightIndex, input.positionWS);
+                        Light l = GetAdditionalLight(lightIndex, input.positionWS, shadowMask);
                         float nl = saturate(dot(normalWS, l.direction));
                         float la = l.distanceAttenuation * l.shadowAttenuation;
                         col += baseCol * l.color * Band(nl * la, _Bands, _BandSoftness);
@@ -181,6 +207,7 @@ Shader "Cafe/Toon"
                 float  _BandSoftness;
                 float  _RimPower;
                 float  _RimStrength;
+                float  _BakedStrength;
             CBUFFER_END
 
             float3 _LightDirection;
@@ -231,6 +258,7 @@ Shader "Cafe/Toon"
                 float  _BandSoftness;
                 float  _RimPower;
                 float  _RimStrength;
+                float  _BakedStrength;
             CBUFFER_END
 
             struct Attributes { float4 positionOS : POSITION; };
@@ -244,6 +272,51 @@ Shader "Cafe/Toon"
             }
 
             half4 depthFrag (Varyings input) : SV_Target { return 0; }
+            ENDHLSL
+        }
+
+        // Only used by the lightmapper: what colour each surface bounces and emits.
+        Pass
+        {
+            Name "Meta"
+            Tags { "LightMode"="Meta" }
+            Cull Off
+
+            HLSLPROGRAM
+            #pragma vertex metaVert
+            #pragma fragment metaFrag
+            #pragma shader_feature EDITOR_VISUALIZATION
+
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseMap_ST;
+                float4 _BaseColor;
+                float4 _ShadowTint;
+                float4 _RimColor;
+                float4 _EmissionColor;
+                float  _AmbientLift;
+                float  _Bands;
+                float  _BandSoftness;
+                float  _RimPower;
+                float  _RimStrength;
+                float  _BakedStrength;
+            CBUFFER_END
+
+            TEXTURE2D(_BaseMap);
+            SAMPLER(sampler_BaseMap);
+
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/UniversalMetaPass.hlsl"
+
+            Varyings metaVert (Attributes input) { return UniversalVertexMeta(input); }
+
+            half4 metaFrag (Varyings input) : SV_Target
+            {
+                MetaInput m = (MetaInput)0;
+                m.Albedo = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv).rgb * _BaseColor.rgb;
+                m.Emission = _EmissionColor.rgb;
+                return UniversalFragmentMeta(input, m);
+            }
             ENDHLSL
         }
     }

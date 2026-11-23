@@ -21,6 +21,9 @@ public class LookdevImport : AssetPostprocessor
         m.addCollider = false;
         m.isReadable = false;
         m.importBlendShapes = false;
+        m.generateSecondaryUV = true;   // lightmap UVs for the baked lighting
+        m.secondaryUVHardAngle = 88f;
+        m.secondaryUVPackMargin = 8f;
         m.materialImportMode = ModelImporterMaterialImportMode.ImportViaMaterialDescription;
     }
 }
