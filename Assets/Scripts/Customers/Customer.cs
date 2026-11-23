@@ -113,7 +113,7 @@ public class Customer : MonoBehaviour, IInteractable
                 break;
             }
             case State.ToSeat:
-                if (Arrived())
+                if (Arrived(_seat != null ? 0.05f : 0.5f))
                 {
                     if (_seat != null) { _agent.enabled = false; _state = State.Seated; }
                     else { FaceTowards(_pickup != null ? _pickup.rotation : transform.rotation); _state = State.Seated; }
@@ -129,7 +129,7 @@ public class Customer : MonoBehaviour, IInteractable
                 }
                 break;
             case State.ToPickup:
-                if (Arrived()) TakeDrink();
+                if (Arrived(0.6f)) TakeDrink();
                 break;
             case State.Rating:
                 if (_pickup != null) FaceTowards(_pickup.rotation);
@@ -137,7 +137,7 @@ public class Customer : MonoBehaviour, IInteractable
                 if (_timer <= 0f) Leave();
                 break;
             case State.Leaving:
-                if (Arrived()) Destroy(gameObject);
+                if (Arrived(0.6f)) Destroy(gameObject);
                 break;
         }
 
@@ -240,10 +240,11 @@ public class Customer : MonoBehaviour, IInteractable
         _agent.SetDestination(p);
     }
 
-    bool Arrived()
+    /// Slack lets a shared spot (pickup, door) count as reached when another customer is standing on it.
+    bool Arrived(float slack = 0.05f)
     {
         if (!_agent.enabled || !_agent.isOnNavMesh) return false;
-        return !_agent.pathPending && _agent.remainingDistance <= _agent.stoppingDistance + 0.05f;
+        return !_agent.pathPending && _agent.remainingDistance <= _agent.stoppingDistance + slack;
     }
 
     static Vector3 Sample(Vector3 p)
