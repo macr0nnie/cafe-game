@@ -15,7 +15,8 @@ public class SteamWandStation : StationBase
     Quaternion _wandRest;
 
     public override bool IsHold { get { return true; } }
-    public override Vector2 Band { get { return new Vector2(SweetStart, SweetEnd); } }
+    /// The silky-milk band, wider with steam wand upgrades.
+    public override Vector2 Band { get { return CafeUpgrades.Widen(new Vector2(SweetStart, SweetEnd), UpgradeTarget.SteamWand); } }
     public override string Hint { get { return "Hold... let go in the band for silky milk"; } }
 
     void Start() { if (Wand != null) _wandRest = Wand.localRotation; }
@@ -67,13 +68,14 @@ public class SteamWandStation : StationBase
             var cup = hands.Cup;
             cup.CancelPour();   // what actually goes in depends on when you let go
             bool added = true;
-            if (t01 >= SweetEnd)
+            var band = Band;
+            if (t01 >= band.y)
             {
                 if (cup.CanAdd(Ingredient.Foam)) cup.Add(Ingredient.Foam);
                 else added = false;
                 CafeMessage.Show("Over-steamed - stiff, bubbly foam", 2.6f);
             }
-            else if (t01 >= SweetStart)
+            else if (t01 >= band.x)
             {
                 // A second pass on milk that is already steamed foams it, which is how cappuccinos get made.
                 if (cup.CanAdd(Ingredient.SteamedMilk)) cup.Add(Ingredient.SteamedMilk);
@@ -89,7 +91,7 @@ public class SteamWandStation : StationBase
             }
             else added = false;
 
-            if (added) cup.RecordQuality(BandQuality(t01, Band));
+            if (added) cup.RecordQuality(BandQuality(t01, band));
         }
         base.End(hands, t01);
     }

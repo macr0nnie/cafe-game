@@ -180,6 +180,13 @@ public static class CafeMeshLibrary
         Save(CafeMesh.RoundedBox(new Vector3(1.00f, 0.02f, 0.62f), 0.010f, 4, "Doormat", true), "Doormat");
         Save(CafeMesh.RoundedBox(new Vector3(0.62f, 0.022f, 0.42f), 0.010f, 4, "Tray", true), "Tray");
 
+        // Shop computer: a small pastel monitor and keyboard for the counter.
+        Save(CafeMesh.RoundedBox(new Vector3(0.40f, 0.26f, 0.03f), 0.014f, 4, "PcMonitor"), "PcMonitor");
+        Save(CafeMesh.RoundedBox(new Vector3(0.36f, 0.21f, 0.006f), 0.004f, 3, "PcScreen"), "PcScreen");
+        Save(CafeMesh.RoundedBox(new Vector3(0.05f, 0.14f, 0.03f), 0.010f, 3, "PcStand", true), "PcStand");
+        Save(CafeMesh.RoundedBox(new Vector3(0.18f, 0.012f, 0.12f), 0.005f, 3, "PcBase", true), "PcBase");
+        Save(CafeMesh.RoundedBox(new Vector3(0.30f, 0.014f, 0.10f), 0.006f, 3, "PcKeyboard", true), "PcKeyboard");
+
         // Placeholder customers: chibi proportions, big low-poly head, long thin legs.
         // Few segments on purpose so the toon shading reads faceted.
         Save(CafeMesh.Blob(0.19f, 11, 0.04f, 6, 8, 0.95f, "NpcHead"), "NpcHead");

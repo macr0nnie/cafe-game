@@ -9,7 +9,7 @@ using UnityEngine.UI;
 /// book. Arrow keys and Enter work on every screen as well as the mouse.
 public class CafeMenus : MonoBehaviour
 {
-    public enum Screen { None, Title, Pause, Settings, Recipes, Summary }
+    public enum Screen { None, Title, Pause, Settings, Recipes, Summary, Shop }
 
     readonly Dictionary<Screen, RectTransform> _screens = new Dictionary<Screen, RectTransform>();
     readonly Dictionary<Screen, Selectable> _first = new Dictionary<Screen, Selectable>();
@@ -23,6 +23,7 @@ public class CafeMenus : MonoBehaviour
     Text _summaryBody;
     Text _summaryHeading;
     Image[] _summaryStars;
+    ShopScreen _shop;
 
     // Today's numbers, gathered from events.
     int _served, _perfect, _starSum, _tips;
@@ -50,6 +51,7 @@ public class CafeMenus : MonoBehaviour
         CafeEvents.OrderServed += OnServed;
         CafeEvents.DayStarted += OnDayStarted;
         CafeEvents.DayEnded += OnDayEnded;
+        CafeEvents.ComputerOpened += OpenShop;
     }
 
     void OnDisable()
@@ -57,6 +59,7 @@ public class CafeMenus : MonoBehaviour
         CafeEvents.OrderServed -= OnServed;
         CafeEvents.DayStarted -= OnDayStarted;
         CafeEvents.DayEnded -= OnDayEnded;
+        CafeEvents.ComputerOpened -= OpenShop;
     }
 
     void Start() { Show(Screen.Title); }
@@ -69,6 +72,21 @@ public class CafeMenus : MonoBehaviour
 
     void OnDayStarted() { _served = _perfect = _starSum = _tips = 0; }
     void OnDayEnded()   { Show(Screen.Summary); }
+
+    /// Built on first use, so the shop computer has registered its catalogue by then.
+    void OpenShop()
+    {
+        if (_shop == null)
+        {
+            var b = Board(Screen.Shop, "Shop computer", null,
+                          new Vector2(1240f, 940f), CafeUIKit.Paper);
+            _shop = new ShopScreen(b, () => Show(Screen.None));
+            _first[Screen.Shop] = _shop.First;
+            Hint(b, "Esc  back to the cafe");
+        }
+        _shop.Refresh();
+        Show(Screen.Shop);
+    }
 
     static void EnsureEventSystem()
     {
@@ -108,7 +126,8 @@ public class CafeMenus : MonoBehaviour
     {
         switch (_current)
         {
-            case Screen.Pause:    Show(Screen.None); break;
+            case Screen.Pause:
+            case Screen.Shop:     Show(Screen.None); break;
             case Screen.Settings:
             case Screen.Recipes:  Show(_backTo == Screen.Title ? Screen.Title : (_backTo == Screen.Pause ? Screen.Pause : Screen.None)); break;
         }

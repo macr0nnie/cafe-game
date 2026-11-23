@@ -30,7 +30,7 @@ public class IngredientStation : StationBase
 
     public override Vector2 Band
     {
-        get { return Verb == StationVerb.Pour ? new Vector2(LineAt - LineTolerance, LineAt + LineTolerance) : Vector2.zero; }
+        get { return Verb == StationVerb.Pour ? CafeUpgrades.Widen(new Vector2(LineAt - LineTolerance, LineAt + LineTolerance), UpgradeTarget.Pour) : Vector2.zero; }
     }
 
     public override string Hint

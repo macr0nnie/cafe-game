@@ -34,17 +34,18 @@ public class GrinderStation : StationBase
     public override void Begin(PlayerHands hands)
     {
         base.Begin(hands);
-        Progress = PerTap;      // the press that started it counts
+        Progress = CafeUpgrades.GrindPerTap(PerTap, CafeUpgrades.Ease(UpgradeTarget.Grinder));      // the press that started it counts
         _idle = 0f;
     }
 
     public override bool Tick(PlayerHands hands, bool held, bool pressed, float dt)
     {
-        if (pressed) { Progress += PerTap; _idle = 0f; }
+        float ease = CafeUpgrades.Ease(UpgradeTarget.Grinder);
+        if (pressed) { Progress += CafeUpgrades.GrindPerTap(PerTap, ease); _idle = 0f; }
         else
         {
             _idle += dt;
-            Progress = Mathf.Max(0f, Progress - SpinDown * dt);
+            Progress = Mathf.Max(0f, Progress - CafeUpgrades.GrindSpinDown(SpinDown, ease) * dt);
         }
 
         if (Progress >= 1f) { End(hands, 1f); return true; }

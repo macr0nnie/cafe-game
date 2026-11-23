@@ -20,6 +20,9 @@ public static class CafeEvents
     /// A menu screen opened (true) or the player went back to the cafe (false).
     public static event Action<bool> MenuToggled;
 
+    /// The player sat down at the shop computer; the menus show its screen.
+    public static event Action ComputerOpened;
+
     /// The player started or finished using something (station, dispenser, door...).
     /// Visual-only listeners such as prop animations hook in here.
     public static event Action<IInteractable> InteractionStarted;
@@ -35,4 +38,5 @@ public static class CafeEvents
     public static void RaiseDayStarted()                         { if (DayStarted != null) DayStarted(); }
     public static void RaiseDayEnded()                           { if (DayEnded != null) DayEnded(); }
     public static void RaiseMenuToggled(bool open)               { if (MenuToggled != null) MenuToggled(open); }
+    public static void RaiseComputerOpened()                     { if (ComputerOpened != null) ComputerOpened(); }
 }
