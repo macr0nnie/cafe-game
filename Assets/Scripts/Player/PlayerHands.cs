@@ -69,6 +69,28 @@ public class PlayerHands : MonoBehaviour
         return go;
     }
 
+    /// Put the cup down on a surface; it stays there as a LooseCup until picked up.
+    public void SetDown(Vector3 point, Quaternion rotation)
+    {
+        if (_cupGO == null || CupIsAway) return;
+        var go = ReleaseCup();
+        go.transform.SetPositionAndRotation(point, rotation);
+        if (go.GetComponent<LooseCup>() == null) go.AddComponent<LooseCup>();
+        CafeEvents.RaiseCupMoved();
+    }
+
+    /// Take a set-down cup back into the hand.
+    public void PickUp(LooseCup loose)
+    {
+        if (_cup != null || loose == null) return;
+        _cupGO = loose.gameObject;
+        _cup = _cupGO.GetComponent<CupContents>();
+        Destroy(loose);
+        foreach (var c in _cupGO.GetComponentsInChildren<Collider>()) c.enabled = false;
+        _target = HoldAnchor;
+        CafeEvents.RaiseCupMoved();
+    }
+
     public void DestroyCup()
     {
         if (_cupGO != null) Destroy(_cupGO);

@@ -25,6 +25,10 @@ public static class CafeEvents
     public static event Action<IInteractable> InteractionStarted;
     public static event Action<IInteractable> InteractionEnded;
 
+    /// A cup was set down on a surface or picked back up.
+    public static event Action CupMoved;
+    public static void RaiseCupMoved()                           { if (CupMoved != null) CupMoved(); }
+
     public static void RaiseInteractionStarted(IInteractable i)  { if (InteractionStarted != null) InteractionStarted(i); }
     public static void RaiseInteractionEnded(IInteractable i)    { if (InteractionEnded != null) InteractionEnded(i); }
 

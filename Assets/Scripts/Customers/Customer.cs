@@ -59,14 +59,19 @@ public class Customer : MonoBehaviour, IInteractable
         Say("");
     }
 
+    /// Customers in the cafe right now, so the drink guide can spot one at the till.
+    public static readonly System.Collections.Generic.List<Customer> All = new System.Collections.Generic.List<Customer>();
+
     void OnEnable()
     {
+        All.Add(this);
         CafeEvents.DrinkHandedOff += OnDrinkHandedOff;
         CafeEvents.DayEnded += OnDayEnded;
     }
 
     void OnDisable()
     {
+        All.Remove(this);
         CafeEvents.DrinkHandedOff -= OnDrinkHandedOff;
         CafeEvents.DayEnded -= OnDayEnded;
         if (_queue != null) _queue.Leave(this);

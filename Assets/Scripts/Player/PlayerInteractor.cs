@@ -21,6 +21,7 @@ public class PlayerInteractor : MonoBehaviour
     IInteractable _active;
     StationBase _activeStation;
     readonly Collider[] _nearby = new Collider[32];
+    readonly PutDownSpot _spot = new PutDownSpot();
 
     public IInteractable Focus { get { return _focus; } }
     public float ActiveProgress { get { return _activeStation != null ? Mathf.Clamp01(_activeStation.Progress) : 0f; } }
@@ -76,11 +77,29 @@ public class PlayerInteractor : MonoBehaviour
 
         // Looking straight at something always wins.
         RaycastHit hit;
+        bool surface = false;
         if (Physics.Raycast(o, f, out hit, Range, Mask, QueryTriggerInteraction.Collide))
         {
             _focus = hit.collider.GetComponentInParent<IInteractable>();
             if (_focus != null) return;
+            surface = Hands != null && Hands.HasCup && !Hands.CupIsAway
+                      && PutDownSpot.Settable(hit.normal, hit.point.y, transform.position.y, o.y);
         }
+
+        AssistFocus(o, f, prev);
+
+        // Holding a cup and looking at bare counter: set it down there, unless a usable
+        // station is right by the crosshair (that is almost always what you meant).
+        if (surface && (_focus == null || !_focus.CanInteract(Hands)))
+        {
+            _spot.Point = hit.point;
+            _spot.Rotation = Quaternion.Euler(0f, Eye.transform.eulerAngles.y, 0f);
+            _focus = _spot;
+        }
+    }
+
+    void AssistFocus(Vector3 o, Vector3 f, IInteractable prev)
+    {
         // The "Aim help" slider scales the cone; 0 turns assist off.
         float cone = AssistDegrees * CafeSettings.AimAssist;
         if (cone <= 0f) return;
