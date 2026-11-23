@@ -8,6 +8,9 @@ public static class CafeEvents
     public static event Action<OrderTicket> OrderPlaced;
     /// A drink was handed over: the recipe, stars (1-5) and tips earned.
     public static event Action<Recipe, int, int> OrderServed;
+    /// A finished drink went out for this ticket: the cup and the customer's rating of it.
+    /// The customer who placed the ticket comes to collect it.
+    public static event Action<OrderTicket, DrinkRating, CupContents> DrinkHandedOff;
     /// The list of open orders changed for any reason.
     public static event Action OrdersChanged;
 
@@ -19,6 +22,7 @@ public static class CafeEvents
 
     public static void RaiseOrderPlaced(OrderTicket t)           { if (OrderPlaced != null) OrderPlaced(t); RaiseOrdersChanged(); }
     public static void RaiseOrderServed(Recipe r, int stars, int tips) { if (OrderServed != null) OrderServed(r, stars, tips); RaiseOrdersChanged(); }
+    public static void RaiseDrinkHandedOff(OrderTicket t, DrinkRating r, CupContents cup) { if (DrinkHandedOff != null) DrinkHandedOff(t, r, cup); }
     public static void RaiseOrdersChanged()                      { if (OrdersChanged != null) OrdersChanged(); }
     public static void RaiseDayStarted()                         { if (DayStarted != null) DayStarted(); }
     public static void RaiseDayEnded()                           { if (DayEnded != null) DayEnded(); }

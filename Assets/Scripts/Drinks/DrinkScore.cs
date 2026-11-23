@@ -24,12 +24,16 @@ public static class DrinkScore
 
         Add(r, "Size", DrinkWords.Size(s.Size), DrinkWords.Size(b.Size), b.Size == s.Size);
 
-        Add(r, "Base", DrinkWords.Base(s.Base),
-                b.BaseSet ? DrinkWords.Base(b.Base) : "nothing",
-                b.BaseSet && b.Base == s.Base);
+        if (s.Base != DrinkBase.None || b.BaseSet)
+            Add(r, "Base", DrinkWords.Base(s.Base),
+                    b.BaseSet ? DrinkWords.Base(b.Base) : "nothing",
+                    b.BaseSet && b.Base == s.Base);
 
         if (s.Base == DrinkBase.Espresso)
             Add(r, "Shots", s.Shots.ToString(), b.Shots.ToString(), b.Shots == s.Shots);
+
+        if (s.Water || b.Water)
+            Add(r, "Hot water", s.Water ? "hot water" : "none", b.Water ? "hot water" : "none", b.Water == s.Water);
 
         if (s.Milk != MilkType.None || b.Milk != MilkType.None)
             Add(r, "Milk", DrinkWords.Milk(s.Milk), DrinkWords.Milk(b.Milk), b.Milk == s.Milk);
