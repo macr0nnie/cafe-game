@@ -774,10 +774,10 @@ public static class CafeSceneBuilder
             var t = root.Find(n);
             if (t != null)
             {
-                var rest = New("CupAnchor", t);
-                rest.localPosition = new Vector3(0f, 0f, SpoutZ);
+                var tubRest = New("CupAnchor", t);
+                tubRest.localPosition = new Vector3(0f, 0f, SpoutZ);
                 var st = t.GetComponent<IngredientStation>();
-                if (st != null) st.CupAnchor = rest;
+                if (st != null) st.CupAnchor = tubRest;
             }
         }
 
