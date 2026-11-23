@@ -9,12 +9,12 @@ using UnityEngine.Rendering;
 /// working drink stations and an order line. Menu: Cafe > 1. Build Cafe Scene
 public static class CafeSceneBuilder
 {
-    const string MatDir    = "Assets/Art/Materials";
+    internal const string MatDir    = "Assets/Art/Materials";
     const string TexDir    = "Assets/Art/Textures";
     const string PrefabDir = "Assets/Art/Prefabs";
     const string SceneDir  = "Assets/Scenes";
     const string ScenePath = SceneDir + "/CozyCafe.unity";
-    const string ShaderName = "Cafe/Toon";
+    internal const string ShaderName = "Cafe/Toon";
 
     // Room, in metres, origin at floor centre.
     const float XMin = -4.0f, XMax = 4.0f;
@@ -98,7 +98,7 @@ public static class CafeSceneBuilder
 
     // ------------------------------------------------------------------ colour
 
-    static Color Hex(string hex)
+    internal static Color Hex(string hex)
     {
         Color c;
         if (!ColorUtility.TryParseHtmlString(hex, out c)) c = Color.magenta;
@@ -122,7 +122,7 @@ public static class CafeSceneBuilder
         { "Ice",        "#E8F4F8" }, { "Boba",       "#4A3A3F" },
     };
 
-    static void BuildMaterials()
+    internal static void BuildMaterials()
     {
         Directory.CreateDirectory(MatDir);
         var shader = Shader.Find(ShaderName);
@@ -173,7 +173,7 @@ public static class CafeSceneBuilder
         AssetDatabase.SaveAssets();
     }
 
-    static Material Mat(string name, Shader shader, Color baseCol, Color shadow,
+    internal static Material Mat(string name, Shader shader, Color baseCol, Color shadow,
                         float bands, float soft, float ambientLift)
     {
         string path = MatDir + "/" + name + ".mat";
@@ -223,7 +223,7 @@ public static class CafeSceneBuilder
         return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
     }
 
-    static Material M(string key)
+    internal static Material M(string key)
     {
         Material m;
         return _mats.TryGetValue(key, out m) ? m : _mats["Cream"];
@@ -232,7 +232,7 @@ public static class CafeSceneBuilder
     // ------------------------------------------------------------------ spawn helpers
 
     /// A mesh from the library, placed in the world.
-    static GameObject Obj(string name, string meshKey, string mat, Vector3 pos,
+    internal static GameObject Obj(string name, string meshKey, string mat, Vector3 pos,
                           Transform parent, Vector3? euler = null, Vector3? scale = null)
     {
         var go = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
@@ -506,7 +506,7 @@ public static class CafeSceneBuilder
 
     // ------------------------------------------------------------------ prefabs
 
-    static void MakeCupPrefab()
+    internal static void MakeCupPrefab()
     {
         Directory.CreateDirectory(PrefabDir);
         var go = new GameObject("Cup");
@@ -559,7 +559,7 @@ public static class CafeSceneBuilder
         Object.DestroyImmediate(go);
     }
 
-    static void MakeTicketPrefab()
+    internal static void MakeTicketPrefab()
     {
         Directory.CreateDirectory(PrefabDir);
         var go = new GameObject("OrderTicket");
@@ -803,7 +803,7 @@ public static class CafeSceneBuilder
 
     // ------------------------------------------------------------------ player
 
-    static GameObject BuildPlayer(Transform root)
+    internal static GameObject BuildPlayer(Transform root)
     {
         var p = new GameObject("Player");
         p.transform.SetParent(root, false);
@@ -858,7 +858,7 @@ public static class CafeSceneBuilder
 
     // ------------------------------------------------------------------ orders
 
-    static void BuildOrders(Transform root, GameObject player)
+    internal static void BuildOrders(Transform root, GameObject player)
     {
         var line = New("OrderLine", root);
 
@@ -933,7 +933,7 @@ public static class CafeSceneBuilder
         return m;
     }
 
-    static ParticleSystem MakeSteam(string name, Transform parent, Vector3 pos, float rate)
+    internal static ParticleSystem MakeSteam(string name, Transform parent, Vector3 pos, float rate)
     {
         var go = new GameObject(name, typeof(ParticleSystem));
         go.transform.SetParent(parent, false);
@@ -979,7 +979,7 @@ public static class CafeSceneBuilder
         return ps;
     }
 
-    static void BuildAtmosphere(Transform root)
+    internal static void BuildAtmosphere(Transform root)
     {
         // Dust drifting in the window light. Cheap, and it does most of the
         // atmospheric work in a scene like this.
@@ -1021,7 +1021,7 @@ public static class CafeSceneBuilder
 
     // ------------------------------------------------------------------ lighting
 
-    static void BuildLighting(Transform root)
+    internal static void BuildLighting(Transform root)
     {
         var sun = new GameObject("Sun_Directional");
         sun.transform.SetParent(root, false);

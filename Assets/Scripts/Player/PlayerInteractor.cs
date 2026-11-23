@@ -45,11 +45,13 @@ public class PlayerInteractor : MonoBehaviour
                 _active = _focus;
                 _activeStation = _active as StationBase;
                 _active.Begin(Hands);
+                CafeEvents.RaiseInteractionStarted(_active);
 
                 // Anything that is not a timed station resolves at once.
                 if (_activeStation == null)
                 {
                     _active.End(Hands, 1f);
+                    CafeEvents.RaiseInteractionEnded(_active);
                     _active = null;
                 }
             }
@@ -59,6 +61,7 @@ public class PlayerInteractor : MonoBehaviour
         // A station is running its minigame; it decides when it is done.
         if (_activeStation.Tick(Hands, CafeInput.InteractHeld(), CafeInput.InteractDown(), Time.deltaTime))
         {
+            CafeEvents.RaiseInteractionEnded(_active);
             _active = null; _activeStation = null;
         }
     }

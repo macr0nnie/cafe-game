@@ -17,6 +17,14 @@ public static class CafeEvents
     /// A menu screen opened (true) or the player went back to the cafe (false).
     public static event Action<bool> MenuToggled;
 
+    /// The player started or finished using something (station, dispenser, door...).
+    /// Visual-only listeners such as prop animations hook in here.
+    public static event Action<IInteractable> InteractionStarted;
+    public static event Action<IInteractable> InteractionEnded;
+
+    public static void RaiseInteractionStarted(IInteractable i)  { if (InteractionStarted != null) InteractionStarted(i); }
+    public static void RaiseInteractionEnded(IInteractable i)    { if (InteractionEnded != null) InteractionEnded(i); }
+
     public static void RaiseOrderPlaced(OrderTicket t)           { if (OrderPlaced != null) OrderPlaced(t); RaiseOrdersChanged(); }
     public static void RaiseOrderServed(Recipe r, int stars, int tips) { if (OrderServed != null) OrderServed(r, stars, tips); RaiseOrdersChanged(); }
     public static void RaiseOrdersChanged()                      { if (OrdersChanged != null) OrdersChanged(); }
