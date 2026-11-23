@@ -12,6 +12,8 @@ public class OrderManager : MonoBehaviour
     public GameObject TicketPrefab;
 
     [Header("Flow")]
+    [Tooltip("On: customers place orders at the till. Off: tickets appear on a timer, for scenes without customers.")]
+    public bool CustomersOrder;
     public int MaxOpenOrders = 4;
     public float FirstOrderDelay = 4f;
     public float SecondsBetweenOrders = 18f;
@@ -69,19 +71,20 @@ public class OrderManager : MonoBehaviour
 
     void Update()
     {
-        if (_accepting && Time.time >= _next && _open.Count < MaxOpenOrders)
+        if (!CustomersOrder && _accepting && Time.time >= _next && _open.Count < MaxOpenOrders)
         {
             AddOrder(RecipeBook.Random());
             _next = Time.time + SecondsBetweenOrders;
         }
     }
 
-    public void AddOrder(Recipe r)
+    /// Pegs a ticket for the recipe on the line. Returns null when the line is not set up.
+    public OrderTicket AddOrder(Recipe r)
     {
         if (TicketPrefab == null || LineStart == null || LineEnd == null)
         {
             CafeMessage.Show("New order: " + r.Name);
-            return;
+            return null;
         }
 
         var go = Instantiate(TicketPrefab, transform);
@@ -102,6 +105,7 @@ public class OrderManager : MonoBehaviour
         Reflow();
         CafeMessage.Show("New order: " + r.Name, 2.6f);
         CafeEvents.RaiseOrderPlaced(ticket);
+        return ticket;
     }
 
     /// Space the tickets evenly along the line.
@@ -152,14 +156,18 @@ public class OrderManager : MonoBehaviour
         foreach (var o in _open) o.Nudge(10f);
 
         _served++;
-        int stars = DrinkScore.Stars(bestScore, cup.Execution);
-        int tips = DrinkScore.Payout(stars, waited, ParSeconds);
+        // Which ticket takes the cup still uses the ingredient match; the rating uses slots.
+        var rating = DrinkRating.Rate(cup.Added, cup.Execution, recipe, waited, ParSeconds);
         string note = cup.TechniqueNote();
-        if (bestScore >= 0.999f) _perfect++;
-        CafeMessage.Show(recipe.Name + (bestScore >= 0.999f ? " - exactly right, " : " - close enough, ")
-            + stars + "/5 stars, +" + tips + " tips" + (note == null ? "" : ". " + note), 3.4f);
+        if (rating.Exact) _perfect++;
+        if (CustomersOrder)
+            CafeMessage.Show(recipe.Name + " is up!" + (note == null ? "" : " (" + note + ")"), 3f);
+        else
+            CafeMessage.Show(recipe.Name + " - " + rating.Headline.ToLower() + ", "
+                + rating.Stars + "/5 stars, +" + rating.Tips + " tips" + (note == null ? "" : ". " + note), 3.4f);
 
-        CafeEvents.RaiseOrderServed(recipe, stars, tips);
+        CafeEvents.RaiseDrinkHandedOff(t, rating, cup);
+        CafeEvents.RaiseOrderServed(recipe, rating.Stars, rating.Tips);
         return true;
     }
 }

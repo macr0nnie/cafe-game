@@ -180,6 +180,18 @@ public static class CafeMeshLibrary
         Save(CafeMesh.RoundedBox(new Vector3(1.00f, 0.02f, 0.62f), 0.010f, 4, "Doormat", true), "Doormat");
         Save(CafeMesh.RoundedBox(new Vector3(0.62f, 0.022f, 0.42f), 0.010f, 4, "Tray", true), "Tray");
 
+        // Placeholder customers: chibi proportions, big low-poly head, long thin legs.
+        // Few segments on purpose so the toon shading reads faceted.
+        Save(CafeMesh.Blob(0.19f, 11, 0.04f, 6, 8, 0.95f, "NpcHead"), "NpcHead");
+        Save(CafeMesh.RoundedBox(new Vector3(0.30f, 0.36f, 0.21f), 0.05f, 3, "NpcTorso"), "NpcTorso");
+        Save(CafeMesh.RoundedBox(new Vector3(0.075f, 0.32f, 0.085f), 0.03f, 2, "NpcArm"), "NpcArm");
+        Save(CafeMesh.RoundedBox(new Vector3(0.07f, 0.56f, 0.08f), 0.03f, 2, "NpcLeg"), "NpcLeg");
+        Save(CafeMesh.RoundedBox(new Vector3(0.09f, 0.06f, 0.15f), 0.025f, 2, "NpcShoe"), "NpcShoe");
+        Save(CafeMesh.RoundedBox(new Vector3(0.026f, 0.046f, 0.012f), 0.006f, 2, "NpcEye"), "NpcEye");
+        Save(CafeMesh.RoundedBox(new Vector3(0.10f, 0.12f, 0.03f), 0.012f, 2, "NpcEar"), "NpcEar");
+        Save(CafeMesh.RoundedBox(new Vector3(0.32f, 0.06f, 0.23f), 0.025f, 3, "NpcScarf"), "NpcScarf");
+        Save(CafeMesh.RoundedBox(new Vector3(0.05f, 0.30f, 0.05f), 0.022f, 2, "NpcTail"), "NpcTail");
+
         AssetDatabase.SaveAssets();
         Debug.Log("Cafe: generated " + _cache.Count + " meshes into " + Dir);
     }

@@ -16,7 +16,8 @@ public static class DrinkWords
     {
         switch (b) { case DrinkBase.Tea: return "tea";
                      case DrinkBase.Matcha: return "matcha";
-                     case DrinkBase.Chocolate: return "chocolate"; }
+                     case DrinkBase.Chocolate: return "chocolate";
+                     case DrinkBase.None: return "no base"; }
         return "espresso";
     }
 
@@ -42,7 +43,8 @@ public static class DrinkWords
                      case global::Syrup.Caramel: return "caramel";
                      case global::Syrup.Strawberry: return "strawberry";
                      case global::Syrup.Taro: return "taro";
-                     case global::Syrup.Hazelnut: return "hazelnut"; }
+                     case global::Syrup.Hazelnut: return "hazelnut";
+                     case global::Syrup.Chocolate: return "chocolate"; }
         return "no syrup";
     }
 
@@ -96,7 +98,8 @@ public static class DrinkWords
                      case global::Syrup.Caramel: return Hex("#C98B4B");
                      case global::Syrup.Strawberry: return Hex("#F0A0B0");
                      case global::Syrup.Taro: return Hex("#C9B8E8");
-                     case global::Syrup.Hazelnut: return Hex("#C9A074"); }
+                     case global::Syrup.Hazelnut: return Hex("#C9A074");
+                     case global::Syrup.Chocolate: return Hex("#8A5A44"); }
         return Color.white;
     }
 
