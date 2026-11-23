@@ -113,7 +113,7 @@ public class Customer : MonoBehaviour, IInteractable
                 break;
             }
             case State.ToSeat:
-                if (Arrived(_seat != null ? 0.05f : 0.5f))
+                if (Arrived(_seat != null ? 0.3f : 0.5f))
                 {
                     if (_seat != null) { _agent.enabled = false; _state = State.Seated; }
                     else { FaceTowards(_pickup != null ? _pickup.rotation : transform.rotation); _state = State.Seated; }
