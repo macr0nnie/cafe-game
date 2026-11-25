@@ -6,10 +6,10 @@ using UnityEngine;
 // rarely the same drink, which is where the variety comes from.
 
 public enum CupSize   { Small, Medium, Large }
-public enum DrinkBase { Espresso, Tea, Matcha, Chocolate }
+public enum DrinkBase { Espresso, Tea, Matcha, Chocolate, None }   // None: syrup-and-milk drinks like taro boba
 public enum MilkType  { None, Whole, Oat, Almond }
 public enum MilkTex   { None, Cold, Steamed, Foamed }
-public enum Syrup     { None, Vanilla, Caramel, Strawberry, Taro, Hazelnut }
+public enum Syrup     { None, Vanilla, Caramel, Strawberry, Taro, Hazelnut, Chocolate }   // Chocolate: mocha sauce
 public enum IceLevel  { None, Light, Full }
 public enum LatteArt  { Plain, Heart, Rosetta }
 
@@ -32,6 +32,7 @@ public class DrinkSpec
     public CupSize Size = CupSize.Medium;
     public DrinkBase Base = DrinkBase.Espresso;
     public int Shots = 1;                       // espresso only
+    public bool Water;                          // hot water topped up, e.g. americano
     public MilkType Milk = MilkType.Whole;
     public MilkTex Texture = MilkTex.Steamed;
     public Syrup Syrup = Syrup.None;
@@ -48,6 +49,7 @@ public class DrinkSpec
         var l = new List<string>();
         if (Base == DrinkBase.Espresso && Shots > 0)
             l.Add(Shots + (Shots == 1 ? " shot" : " shots"));
+        if (Water) l.Add("hot water");
         if (Milk != MilkType.None)
         {
             string m = DrinkWords.Milk(Milk);
@@ -83,6 +85,7 @@ public class DrinkBuild
     public CupSize Size = CupSize.Medium;
     public DrinkBase Base = DrinkBase.Espresso;
     public int Shots;
+    public bool Water;
     public MilkType Milk = MilkType.None;
     public MilkTex Texture = MilkTex.None;
     public Syrup Syrup = Syrup.None;
@@ -115,14 +118,14 @@ public class DrinkBuild
     {
         get
         {
-            return !BaseSet && Milk == MilkType.None && Syrup == Syrup.None
+            return !BaseSet && !Water && Milk == MilkType.None && Syrup == Syrup.None
                    && Ice == IceLevel.None && Toppings == Topping.None;
         }
     }
 
     public void Clear()
     {
-        Shots = 0; BaseSet = false;
+        Shots = 0; BaseSet = false; Water = false;
         Milk = MilkType.None; Texture = MilkTex.None;
         Syrup = Syrup.None; Pumps = 0;
         Ice = IceLevel.None; Toppings = Topping.None; Art = LatteArt.Plain;
@@ -134,6 +137,7 @@ public class DrinkBuild
         var parts = new List<string>();
         if (Shots > 0) parts.Add(Shots + (Shots == 1 ? " shot" : " shots"));
         else if (BaseSet) parts.Add(DrinkWords.Base(Base));
+        if (Water) parts.Add("hot water");
         if (Milk != MilkType.None) parts.Add(DrinkWords.Tex(Texture) + " " + DrinkWords.Milk(Milk));
         if (Syrup != Syrup.None && Pumps > 0) parts.Add(Pumps + "x " + DrinkWords.Syrup(Syrup));
         if (Ice != IceLevel.None) parts.Add(DrinkWords.Ice(Ice));

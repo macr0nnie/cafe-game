@@ -59,6 +59,16 @@ public class PlayerHands : MonoBehaviour
         _target = HoldAnchor;
     }
 
+    /// Let go of the cup without destroying it, e.g. setting it down for a customer.
+    public GameObject ReleaseCup()
+    {
+        var go = _cupGO;
+        _cupGO = null;
+        _cup = null;
+        _target = null;
+        return go;
+    }
+
     public void DestroyCup()
     {
         if (_cupGO != null) Destroy(_cupGO);

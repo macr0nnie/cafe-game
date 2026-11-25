@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
+using Unity.AI.Navigation;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.Rendering;
 
 /// Builds the playable cafe: smooth procedural furniture, first-person barista,
@@ -30,7 +32,7 @@ public static class CafeSceneBuilder
     const float BackBarTopY = 0.9275f;
 
     static Dictionary<string, Material> _mats;
-    static GameObject _cupPrefab, _ticketPrefab;
+    static GameObject _cupPrefab, _ticketPrefab, _customerPrefab;
 
     [MenuItem("Cafe/1. Build Cafe Scene", false, 0)]
     public static void Build()
@@ -72,10 +74,12 @@ public static class CafeSceneBuilder
 
         MakeCupPrefab();
         MakeTicketPrefab();
+        MakeCustomerPrefab();
 
         BuildStations(stations);
         var player = BuildPlayer(gameplay);
         BuildOrders(gameplay, player);
+        BuildCustomers(gameplay);
         gameplay.gameObject.AddComponent<CafeDay>();
         BuildAtmosphere(fx);
         BuildLighting(lighting);
@@ -83,6 +87,7 @@ public static class CafeSceneBuilder
         CafeLighting.ApplyMorning();
 
         Directory.CreateDirectory(SceneDir);
+        BakeNavMesh(gameplay, player);
         EditorSceneManager.SaveScene(EditorSceneManager.GetSceneAt(0), ScenePath);
         AssetDatabase.Refresh();
 
@@ -386,6 +391,25 @@ public static class CafeSceneBuilder
         var bcol = bench.gameObject.AddComponent<BoxCollider>();
         bcol.center = new Vector3(3.78f, 0.45f, 0.30f);
         bcol.size = new Vector3(0.48f, 0.90f, 2.62f);
+        // The bench table too, so customers path around it instead of under it.
+        var tcol = bench.gameObject.AddComponent<BoxCollider>();
+        tcol.center = new Vector3(3.06f, 0.37f, 0.30f);
+        tcol.size = new Vector3(0.52f, 0.74f, 2.40f);
+
+        // Two bench spots facing the table. The gap between bench and table is too
+        // narrow to walk, so customers step in from the bench ends.
+        BenchSeat("Seat_1", new Vector3(3.74f, 0f, -0.25f), new Vector3(-1.0f, 0f, 0.24f), bench);
+        BenchSeat("Seat_2", new Vector3(3.74f, 0f,  0.85f), new Vector3( 1.0f, 0f, 0.24f), bench);
+    }
+
+    static void BenchSeat(string name, Vector3 pos, Vector3 approach, Transform parent)
+    {
+        var t = New(name, parent);
+        t.localPosition = pos;
+        t.localRotation = Quaternion.Euler(0f, -90f, 0f);   // +Z faces the bench table
+        var seat = t.gameObject.AddComponent<Seat>();
+        seat.ApproachOffset = approach;
+        seat.SitDrop = NpcHipY - 0.51f;
     }
 
     static void RoundTable(string name, Vector2 xz, bool large, Transform parent)
@@ -427,6 +451,11 @@ public static class CafeSceneBuilder
             var col = chair.gameObject.AddComponent<BoxCollider>();
             col.center = new Vector3(0f, 0.45f, 0f);
             col.size = new Vector3(0.5f, 0.9f, 0.5f);
+
+            // Customers walk up behind the chair, then slide in facing the table.
+            var seat = chair.gameObject.AddComponent<Seat>();
+            seat.ApproachOffset = new Vector3(0f, 0f, -0.6f);
+            seat.SitDrop = NpcHipY - 0.50f;
         }
     }
 
@@ -745,10 +774,10 @@ public static class CafeSceneBuilder
             var t = root.Find(n);
             if (t != null)
             {
-                var rest = New("CupAnchor", t);
-                rest.localPosition = new Vector3(0f, 0f, SpoutZ);
+                var tubRest = New("CupAnchor", t);
+                tubRest.localPosition = new Vector3(0f, 0f, SpoutZ);
                 var st = t.GetComponent<IngredientStation>();
-                if (st != null) st.CupAnchor = rest;
+                if (st != null) st.CupAnchor = tubRest;
             }
         }
 
@@ -773,7 +802,9 @@ public static class CafeSceneBuilder
                                   new Vector3(0.30f, CounterTopY, CounterZ + 0.06f),
                                   new Vector3(0f, 0.06f, 0f), new Vector3(0.66f, 0.16f, 0.46f));
         Obj("Tray", "Tray", "WoodMid", Vector3.zero, serveGO.transform);
-        serveGO.AddComponent<ServeWindow>();
+        var rest = New("CupRest", serveGO.transform);
+        rest.localPosition = new Vector3(0f, 0.022f, -0.07f);
+        serveGO.AddComponent<ServeWindow>().CupRest = rest;
 
         var binGO = StationRoot("TrashBin", root, new Vector3(-3.35f, 0f, -3.45f),
                                 new Vector3(0f, 0.30f, 0f), new Vector3(0.40f, 0.60f, 0.40f));
@@ -885,6 +916,172 @@ public static class CafeSceneBuilder
         mgr.MaxOpenOrders = 4;
         mgr.FirstOrderDelay = 4f;
         mgr.SecondsBetweenOrders = 18f;
+    }
+
+    // ------------------------------------------------------------------ customers
+
+    // Hip height of the placeholder customer; seats drop the body by (hip - seat top).
+    const float NpcHipY = 0.62f;
+
+    static readonly string[] Outfits = { "Counter", "Accent", "Taro", "Strawberry", "Matcha", "Vanilla", "WallMint" };
+
+    /// Placeholder chibi customer: big low-poly head, oversized top, long thin legs.
+    /// Swap the prefab's meshes for real models later; the Customer component stays.
+    static void MakeCustomerPrefab()
+    {
+        Directory.CreateDirectory(PrefabDir);
+        var go = new GameObject("Customer");
+
+        var agent = go.AddComponent<NavMeshAgent>();
+        agent.radius = 0.25f;
+        agent.height = 1.45f;
+        agent.speed = 1.1f;
+        agent.angularSpeed = 540f;
+        agent.acceleration = 8f;
+        agent.stoppingDistance = 0.08f;
+
+        // Trigger so the barista can talk to them without being shoved around.
+        var cap = go.AddComponent<CapsuleCollider>();
+        cap.isTrigger = true;
+        cap.radius = 0.25f;
+        cap.height = 1.45f;
+        cap.center = new Vector3(0f, 0.725f, 0f);
+
+        Transform Leg(string n, float x)
+        {
+            var hip = New(n, go.transform);
+            hip.localPosition = new Vector3(x, NpcHipY, 0f);
+            Obj("Leg", "NpcLeg", "Cream", new Vector3(0f, -0.28f, 0f), hip);
+            Obj("Shoe", "NpcShoe", "WoodDark", new Vector3(0f, -0.59f, 0.025f), hip);
+            return hip;
+        }
+        var legL = Leg("Hip_L", -0.07f);
+        var legR = Leg("Hip_R", 0.07f);
+
+        var body = New("Body", go.transform);
+        body.localPosition = new Vector3(0f, NpcHipY, 0f);
+        var torso = Obj("Torso", "NpcTorso", "Accent", new Vector3(0f, 0.17f, 0f), body);
+        var armL = Obj("Arm_L", "NpcArm", "Accent", new Vector3(-0.185f, 0.17f, 0f), body, new Vector3(0f, 0f, -6f));
+        var armR = Obj("Arm_R", "NpcArm", "Accent", new Vector3( 0.185f, 0.17f, 0.04f), body, new Vector3(-35f, 0f, 6f));
+        Obj("Head", "NpcHead", "Pastry", new Vector3(0f, 0.53f, 0f), body);
+        Obj("Eye_L", "NpcEye", "LineDark", new Vector3(-0.065f, 0.54f, 0.172f), body);
+        Obj("Eye_R", "NpcEye", "LineDark", new Vector3( 0.065f, 0.54f, 0.172f), body);
+
+        var hand = New("Hand", body);
+        hand.localPosition = new Vector3(0.20f, 0.07f, 0.16f);
+
+        // Extras, each switched on at random per customer: cat ears, scarf, tail.
+        var ears = New("Ears", body);
+        Obj("Ear_L", "NpcEar", "Pastry", new Vector3(-0.115f, 0.70f, 0f), ears, new Vector3(0f, 0f, 18f));
+        Obj("Ear_R", "NpcEar", "Pastry", new Vector3( 0.115f, 0.70f, 0f), ears, new Vector3(0f, 0f, -18f));
+        var scarf = Obj("Scarf", "NpcScarf", "Caramel", new Vector3(0f, 0.36f, 0f), body);
+        var tail = Obj("Tail", "NpcTail", "Pastry", new Vector3(0f, 0.04f, -0.16f), body, new Vector3(-40f, 0f, 0f));
+
+        // Speech bubble: paper card with dark text, so it reads on any wall colour.
+        var bubble = New("Bubble", go.transform);
+        bubble.localPosition = new Vector3(0f, 1.72f, 0f);
+        var back = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        back.name = "Card";
+        Object.DestroyImmediate(back.GetComponent<Collider>());
+        back.transform.SetParent(bubble, false);
+        back.transform.localPosition = new Vector3(0f, 0f, 0.01f);
+        back.transform.localScale = new Vector3(0.64f, 0.24f, 1f);
+        var backR = back.GetComponent<MeshRenderer>();
+        backR.sharedMaterial = M("Paper");
+        backR.shadowCastingMode = ShadowCastingMode.Off;
+
+        var tmGO = new GameObject("Text");
+        tmGO.transform.SetParent(bubble, false);
+        var tm = tmGO.AddComponent<TextMesh>();
+        tm.anchor = TextAnchor.MiddleCenter;
+        tm.alignment = TextAlignment.Center;
+        tm.fontSize = 56;
+        tm.characterSize = 0.0105f;
+        tm.color = new Color(0.33f, 0.24f, 0.30f, 1f);
+        var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        if (font == null) font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        if (font != null)
+        {
+            tm.font = font;
+            tmGO.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+        }
+
+        foreach (var r in go.GetComponentsInChildren<MeshRenderer>())
+            if (r.gameObject != back && r.gameObject != tmGO) r.shadowCastingMode = ShadowCastingMode.On;
+
+        var c = go.AddComponent<Customer>();
+        c.Body = body;
+        c.LegL = legL;
+        c.LegR = legR;
+        c.Hand = hand;
+        c.BubbleRoot = bubble;
+        c.BubbleText = tm;
+        c.BubbleBack = back.transform;
+        c.OutfitParts = new Renderer[] {
+            torso.GetComponent<Renderer>(), armL.GetComponent<Renderer>(), armR.GetComponent<Renderer>() };
+        c.Extras = new[] { ears.gameObject, scarf, tail };
+
+        _customerPrefab = PrefabUtility.SaveAsPrefabAsset(go, PrefabDir + "/Customer.prefab");
+        Object.DestroyImmediate(go);
+    }
+
+    /// Door, till line, pickup spot and the spawner. All positions are anchors, so a new
+    /// layout only moves these transforms.
+    static void BuildCustomers(Transform root)
+    {
+        var mgr = Object.FindAnyObjectByType<OrderManager>();
+        if (mgr != null) mgr.CustomersOrder = true;
+
+        var c = New("Customers", root);
+        var door = New("Door", c);
+        door.localPosition = new Vector3(0f, 0f, ZMax - 0.4f);
+        door.localRotation = Quaternion.Euler(0f, 180f, 0f);     // facing into the room
+
+        // In front of the serve tray, facing the counter.
+        var pickup = New("Pickup", c);
+        pickup.localPosition = new Vector3(0.30f, 0f, CounterZ + 0.78f);
+        pickup.localRotation = Quaternion.Euler(0f, 180f, 0f);
+
+        // Front of the line faces the till; the rest wait along the counter facing the front.
+        var queue = New("TillQueue", c).gameObject.AddComponent<CustomerQueue>();
+        var spots = new List<Transform>();
+        float[] xs = { 1.05f, 1.75f, 2.45f, 3.15f };
+        for (int i = 0; i < xs.Length; i++)
+        {
+            var s = New("Spot_" + i, queue.transform);
+            s.localPosition = new Vector3(xs[i], 0f, CounterZ + 0.78f);
+            s.localRotation = Quaternion.Euler(0f, i == 0 ? 180f : -90f, 0f);
+            spots.Add(s);
+        }
+        queue.Spots = spots.ToArray();
+
+        var sp = c.gameObject.AddComponent<CustomerSpawner>();
+        sp.Prefab = _customerPrefab != null ? _customerPrefab.GetComponent<Customer>() : null;
+        sp.Door = door;
+        sp.Pickup = pickup;
+        sp.Queue = queue;
+        var outfits = new List<Material>();
+        foreach (var k in Outfits) outfits.Add(M(k));
+        sp.Outfits = outfits.ToArray();
+        sp.MaxInside = Object.FindObjectsByType<Seat>(FindObjectsSortMode.None).Length + queue.Spots.Length;
+    }
+
+    /// Bakes the walkable floor from colliders and saves it next to the scene. The player
+    /// is switched off for the bake so their capsule does not punch a hole in it.
+    static void BakeNavMesh(Transform root, GameObject player)
+    {
+        var nav = New("Navigation", root).gameObject.AddComponent<NavMeshSurface>();
+        nav.collectObjects = CollectObjects.All;
+        nav.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
+
+        bool wasActive = player != null && player.activeSelf;
+        if (player != null) player.SetActive(false);
+        nav.BuildNavMesh();
+        if (player != null) player.SetActive(wasActive);
+
+        string path = SceneDir + "/CozyCafe_NavMesh.asset";
+        AssetDatabase.DeleteAsset(path);
+        AssetDatabase.CreateAsset(nav.navMeshData, path);
     }
 
     // ------------------------------------------------------------------ atmosphere
