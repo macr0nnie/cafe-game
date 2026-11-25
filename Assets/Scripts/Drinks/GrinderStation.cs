@@ -26,6 +26,9 @@ public class GrinderStation : StationBase
         return "Grind and dose";
     }
 
+    /// An empty basket means the shot starts here.
+    public override bool Makes(Ingredient i) { return i == Ingredient.EspressoShot && Machine != null && !Machine.HasGrounds; }
+
     public override bool CanInteract(PlayerHands hands)
     {
         return Machine != null && !Machine.HasGrounds;

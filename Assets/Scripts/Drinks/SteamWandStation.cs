@@ -29,6 +29,8 @@ public class SteamWandStation : StationBase
         return "Hold to steam - release when it is glossy";
     }
 
+    public override bool Makes(Ingredient i) { return i == Ingredient.SteamedMilk || i == Ingredient.Foam; }
+
     public override bool CanInteract(PlayerHands hands)
     {
         return hands != null && hands.HasCup && Preview(hands.Cup) != null;

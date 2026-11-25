@@ -26,6 +26,8 @@ public class EspressoStation : StationBase
         return hands.Cup.CountOf(Ingredient.EspressoShot) > 0 ? "Pull a second shot" : "Pull a shot";
     }
 
+    public override bool Makes(Ingredient i) { return i == Ingredient.EspressoShot && HasGrounds; }
+
     public override bool CanInteract(PlayerHands hands)
     {
         return HasGrounds && hands != null && hands.HasCup

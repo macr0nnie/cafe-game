@@ -883,6 +883,17 @@ public static class CafeSceneBuilder
         var hud = p.AddComponent<CafeHUD>();
         hud.Interactor = inter;
 
+        // Drink guide: next step on the HUD, soft outlines on usable things.
+        var guide = p.AddComponent<GuideTracker>();
+        guide.Hands = hands;
+        var glow = p.AddComponent<InteractHighlighter>();
+        glow.Interactor = inter;
+        glow.Guide = guide;
+        glow.HighlightShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/Art/Shaders/CafeHighlight.shader");
+        var guideHud = p.AddComponent<GuideHUD>();
+        guideHud.Guide = guide;
+        guideHud.Eye = cam;
+
         // UI: open orders down the left, and every menu screen.
         p.AddComponent<OrderBoard>().Hands = hands;
         p.AddComponent<CafeMenus>();

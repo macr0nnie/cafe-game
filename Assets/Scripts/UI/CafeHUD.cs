@@ -91,7 +91,7 @@ public class CafeHUD : MonoBehaviour
         _toast     = Chip(canvasGO.transform, "Toast",     26, new Vector2(0.5f, 0f),   new Vector2(0f, 96f),   CafeUIKit.Butter);
     }
 
-    static Text Chip(Transform parent, string name, int size, Vector2 anchor, Vector2 pos, Color tint)
+    internal static Text Chip(Transform parent, string name, int size, Vector2 anchor, Vector2 pos, Color tint)
     {
         var card = CafeUIKit.Card(parent, name, tint);
         card.raycastTarget = false;
@@ -109,7 +109,7 @@ public class CafeHUD : MonoBehaviour
         return t;
     }
 
-    static void SetChip(Text t, string text)
+    internal static void SetChip(Text t, string text)
     {
         if (t == null) return;
         bool show = !string.IsNullOrEmpty(text);

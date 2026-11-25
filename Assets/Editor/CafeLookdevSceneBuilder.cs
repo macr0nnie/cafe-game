@@ -108,6 +108,7 @@ public static class CafeLookdevSceneBuilder
         CafeSceneBuilder.BuildAtmosphere(fx);
         CafeLighting.ApplyMorning();
         CafePostFX.AddVolume();
+        CafeLookdevLighting.Setup();   // static flags, baked/mixed lights, probes; bake from Cafe > 5
 
         Directory.CreateDirectory(Path.GetDirectoryName(ScenePath));
         EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), ScenePath);
