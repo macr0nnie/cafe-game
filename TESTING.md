@@ -9,7 +9,7 @@ so tests can reference game systems directly and test them in isolation.
 | `SceneBuilderTests` | Cafe > 1. Build Cafe Scene runs with no errors and saves the scene; generated materials stay on the locked palette (batch mode only, restores the files it rewrites) |
 | `ProjectRulesTests` | Tonemapping stays Neutral; each MonoBehaviour has its own file named after the class |
 | `CafeMeshTests` | Example plain unit test of runtime code |
-| `DrinkGuideTests` | Drink guide step order (cup, ingredients in a technique-safe order, serve), which order a cup belongs to, where a cup can be set down |
+| `UpgradeTests` | Shop coins and buying, save format, upgrade ease caps, upgrades only ever widen minigame bands, catalogue tiers chain correctly |
 
 ## Running
 

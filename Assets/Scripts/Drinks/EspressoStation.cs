@@ -14,7 +14,8 @@ public class EspressoStation : StationBase
     [Tooltip("Stopping before this hands the basket back untouched.")]
     public float MinPull = 0.15f;
 
-    public override Vector2 Band { get { return CremaBand; } }
+    /// The crema band, wider with espresso upgrades.
+    public override Vector2 Band { get { return CafeUpgrades.Widen(CremaBand, UpgradeTarget.Espresso); } }
     public override string Hint { get { return "Tap again to stop the shot in the band"; } }
 
     public override string Prompt(PlayerHands hands)
@@ -50,14 +51,15 @@ public class EspressoStation : StationBase
     {
         if (hands != null && hands.HasCup && t01 >= MinPull)
         {
+            var band = Band;
             hands.Cup.CommitPour();
-            hands.Cup.RecordQuality(BandQuality(t01, CremaBand));
+            hands.Cup.RecordQuality(BandQuality(t01, band));
             HasGrounds = false;
             if (GroundsVisual != null) GroundsVisual.gameObject.SetActive(false);
 
-            if (t01 < CremaBand.x)      CafeMessage.Show("Short pull - a touch sour", 2.6f);
-            else if (t01 <= CremaBand.y) CafeMessage.Show("Golden crema - perfect shot", 2.6f);
-            else                         CafeMessage.Show("Long pull - a little bitter", 2.6f);
+            if (t01 < band.x)       CafeMessage.Show("Short pull - a touch sour", 2.6f);
+            else if (t01 <= band.y) CafeMessage.Show("Golden crema - perfect shot", 2.6f);
+            else                    CafeMessage.Show("Long pull - a little bitter", 2.6f);
         }
         else if (t01 < MinPull)
         {

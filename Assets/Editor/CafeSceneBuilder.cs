@@ -81,6 +81,8 @@ public static class CafeSceneBuilder
         BuildOrders(gameplay, player);
         BuildCustomers(gameplay);
         gameplay.gameObject.AddComponent<CafeDay>();
+        // On the counter return, facing the barista side.
+        BuildComputer(gameplay, new Vector3(-2.72f, CounterTopY, CounterZ - 0.50f), 180f);
         BuildAtmosphere(fx);
         BuildLighting(lighting);
 
@@ -897,6 +899,26 @@ public static class CafeSceneBuilder
         p.AddComponent<CafeMenus>();
 
         return p;
+    }
+
+    // ------------------------------------------------------------------ shop computer
+
+    /// The shop computer, standing on a counter at pos (its base) with the screen
+    /// facing local +Z turned by yaw. Writes the upgrade assets it sells.
+    internal static GameObject BuildComputer(Transform parent, Vector3 pos, float yaw)
+    {
+        var go = StationRoot("ShopComputer", parent, pos, new Vector3(0f, 0.19f, 0.03f), new Vector3(0.44f, 0.40f, 0.30f));
+        go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+        go.GetComponent<BoxCollider>().isTrigger = true;
+
+        Obj("Base",     "PcBase",     "Cream",     new Vector3(0f, 0f, -0.03f),      go.transform);
+        Obj("Stand",    "PcStand",    "Cream",     new Vector3(0f, 0.012f, -0.04f),  go.transform);
+        Obj("Monitor",  "PcMonitor",  "Counter",   new Vector3(0f, 0.25f, -0.02f),   go.transform);
+        Obj("Screen",   "PcScreen",   "Accent",    new Vector3(0f, 0.255f, -0.004f), go.transform);
+        Obj("Keyboard", "PcKeyboard", "WarmWhite", new Vector3(0f, 0f, 0.10f),       go.transform);
+
+        go.AddComponent<UpgradeComputer>().Catalog = CafeUpgradeLibrary.Generate();
+        return go;
     }
 
     // ------------------------------------------------------------------ orders

@@ -98,6 +98,7 @@ public static class CafeLookdevSceneBuilder
             line.RotateAround(centre, Vector3.up, 180f);
         }
         gameplay.gameObject.AddComponent<CafeDay>();
+        BuildComputer(gameplay, LookdevData.Parse(data.text));
 
         BuildCustomers(gameplay, LookdevData.Parse(data.text));
         BakeNavMesh(gameplay, player);
@@ -506,6 +507,18 @@ public static class CafeLookdevSceneBuilder
         const string path = "Assets/Scenes/CozyCafe_Lookdev_NavMesh.asset";
         AssetDatabase.DeleteAsset(path);
         AssetDatabase.CreateAsset(nav.navMeshData, path);
+    }
+
+    /// The shop computer goes in the empty front-counter slot, screen towards the barista (+Z).
+    static void BuildComputer(Transform root, LookdevData data)
+    {
+        foreach (var s in data.slots)
+        {
+            if (s.id != "reserved_A") continue;
+            CafeSceneBuilder.BuildComputer(root, new Vector3(s.centre[0], s.centre[1], s.centre[2]), 0f);
+            return;
+        }
+        Debug.LogWarning("Lookdev: no reserved_A slot, so no shop computer was placed");
     }
 
     static void AddToBuildSettings()
