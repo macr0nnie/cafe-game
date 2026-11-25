@@ -3,6 +3,7 @@
     "rootNamespace": "",
     "references": [
         "Cafe",
+        "Unity.AI.Navigation",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime"
     ],
