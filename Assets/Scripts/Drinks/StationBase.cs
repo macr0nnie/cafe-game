@@ -34,6 +34,10 @@ public abstract class StationBase : MonoBehaviour, IInteractable
     public abstract string Prompt(PlayerHands hands);
     public abstract bool CanInteract(PlayerHands hands);
 
+    /// True when using this now is the way to get `i` into a cup. The drink guide uses it
+    /// to point at the next station, so a new station only has to answer this.
+    public virtual bool Makes(Ingredient i) { return false; }
+
     public virtual void Begin(PlayerHands hands)
     {
         _running = true;

@@ -293,12 +293,15 @@ public class CupContents : MonoBehaviour
     // ---------------------------------------------------------------- scoring
 
     /// 0 = wrong drink, 1 = exact. Set based, so order never blocks you.
-    public float ScoreAgainst(Recipe r)
+    public float ScoreAgainst(Recipe r) { return Score(Added, r); }
+
+    /// Same as ScoreAgainst, for a plain ingredient list (the guide and tests use it).
+    public static float Score(IList<Ingredient> added, Recipe r)
     {
         if (r == null) return 0f;
         var need = new List<Ingredient>(r.Steps);
         int hits = 0, extra = 0;
-        foreach (var a in Added)
+        foreach (var a in added)
         {
             if (need.Remove(a)) hits++;
             else extra++;

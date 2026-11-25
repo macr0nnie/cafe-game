@@ -51,6 +51,8 @@ public class IngredientStation : StationBase
                + Ingredients.Label(Produces);
     }
 
+    public override bool Makes(Ingredient i) { return i == Produces; }
+
     public override bool CanInteract(PlayerHands hands)
     {
         return hands != null && hands.HasCup && hands.Cup.CanAdd(Produces);
